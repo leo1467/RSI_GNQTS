@@ -361,6 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/RSI_GNQTS_sliding/debug.csv
-/RSI_GNQTS_sliding/RSI_GNQTS_result.csv
 *.csv
+.DS_Store
+RSI_GNQTS_sliding/RSI_GNQTS_sliding

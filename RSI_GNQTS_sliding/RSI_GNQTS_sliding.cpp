@@ -3,7 +3,7 @@
 //
 //
 //
-// #include <dirent.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -16,13 +16,13 @@
 #include <string>
 #include <vector>
 
-#include "dirent.h"
+// #include "dirent.h"
 
 using namespace std;
 
 #define PARTICAL_AMOUNT 10
-#define START 2    //股價csv裡的開始欄位
-#define COL 4    //股價在第幾column
+#define START 2  //股價csv裡的開始欄位
+#define COL 4  //股價在第幾column
 #define TOTAL_CP_LV 10000000.0
 
 double delta = 0.003;
@@ -33,19 +33,19 @@ string starting_date = "2010-01-04";
 string ending_date = "2020-12-31";
 string test_start_y = to_string(stoi(starting_date.substr(0, 4)) + 1);
 string test_start_m = starting_date.substr(5, 2);
-string sliding_windows[] = { "A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H*", "H2H", "H2Q", "H2M", "Q*", "Q2Q", "Q2M", "M*", "M2M" };
+string sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H*", "H2H", "H2Q", "H2M", "Q*", "Q2Q", "Q2M", "M*", "M2M"};
 
-// string RSI_path = "/Users/neo/Desktop/VS/new training/RSI/all_RSI_table";
-// string price_path = "/Users/neo/Desktop/VS/new training/RSI/all_price";
-// string output_path = "/Users/neo/Desktop/VS/new training/RSI/all_sw";
-string RSI_path = "D:/stock_info/all_RSI_table";
-string price_path = "D:/stock_info/all_price";
-string output_path = "D:/stock_info/all_sw";
+string RSI_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
+string price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
+string output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
+// string RSI_path = "D:/stock_info/all_RSI_table";
+// string price_path = "D:/stock_info/all_price";
+// string output_path = "D:/stock_info/all_sw";
 
-string* days_table;    //記錄開始日期到結束日期
-double** big_RSI_table;    //記錄一間公司開始日期到結束日期1~256的RSI
-double* stock_table;    //記錄開始日期的股價到結束日期的股價
-vector< int > interval_table;    //記錄滑動區間
+string* days_table;  //記錄開始日期到結束日期
+double** big_RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
+double* stock_table;  //記錄開始日期的股價到結束日期的股價
+vector< int > interval_table;  //記錄滑動區間
 
 struct prob {
     double period[8];
@@ -357,7 +357,7 @@ void global_update(ofstream& debug) {
     for (int i = 0; i < 7; i++) {
         debug << Gbest.selling_signal_bi[i] << ",";
     }
-    debug << Gbest.period_dec << "," << Gbest.buying_signal_dec << "," << Gbest.selling_signal_dec << "," <<Gbest.RoR << endl;
+    debug << Gbest.period_dec << "," << Gbest.buying_signal_dec << "," << Gbest.selling_signal_dec << "," << Gbest.RoR << endl;
 
     debug << "local worst,";
     for (int i = 0; i < 8; i++) {
@@ -462,7 +462,7 @@ int find_train_end(int table_size, string mon, int& train_end_row, int to_jump) 
 
 int find_train_start(int test_s_row, string mon, int& train_start_row, string& start, string& end, int to_jump) {
     int skip = 0;
-    if (to_jump == 13) {    //給Y2Y用
+    if (to_jump == 13) {  //給Y2Y用
         train_start_row = 0;
         start = days_table[0].substr(5, 2);
         end = days_table[test_s_row].substr(5, 2);
@@ -486,17 +486,17 @@ int find_train_start(int test_s_row, string mon, int& train_start_row, string& s
 }
 
 void sliding_start_end(int table_size, string SW, int sliding_type_int) {
-    int train_start_row = 0;    //記錄訓練期開始的row
-    int train_end_row = 0;    //記錄訓練期結束的row
-    string M[] = { "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12" };
-    int test_s_row = 0;    //記錄測試期開始row
-    for (int i = 230; i < 300; i++) {    //找出測試期開始的row
+    int train_start_row = 0;  //記錄訓練期開始的row
+    int train_end_row = 0;  //記錄訓練期結束的row
+    string M[] = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
+    int test_s_row = 0;  //記錄測試期開始row
+    for (int i = 230; i < 300; i++) {  //找出測試期開始的row
         if (days_table[i].substr(0, 4) == test_start_y) {
             test_s_row = i;
             break;
         }
     }
-    if (sliding_type_int == 2) {    //判斷year-on-year
+    if (sliding_type_int == 2) {  //判斷year-on-year
         train_start_row = 0;
         string train_end_y = to_string(stoi(ending_date.substr(0, 4)) - 1);
         for (int i = table_size - 230; i > 0; i--) {
@@ -505,102 +505,102 @@ void sliding_start_end(int table_size, string SW, int sliding_type_int) {
                 break;
             }
         }
-        switch (SW[0]) {    //做H*
-        case 'H': {
-            interval_table.push_back(train_start_row);
-            string end_H = M[6];
-            for (int i = 97, j = 6; i < train_end_row; i++) {
-                if (days_table[i].substr(5, 2) == end_H) {
-                    interval_table.push_back(i - 1);
-                    interval_table.push_back(i);
-                    end_H = M[(j += 6) % 12];
-                    i += 97;
+        switch (SW[0]) {  //做H*
+            case 'H': {
+                interval_table.push_back(train_start_row);
+                string end_H = M[6];
+                for (int i = 97, j = 6; i < train_end_row; i++) {
+                    if (days_table[i].substr(5, 2) == end_H) {
+                        interval_table.push_back(i - 1);
+                        interval_table.push_back(i);
+                        end_H = M[(j += 6) % 12];
+                        i += 97;
+                    }
                 }
+                interval_table.push_back(train_end_row);
+                break;
             }
-            interval_table.push_back(train_end_row);
-            break;
-        }
-        case 'Q': {    //做Q*
-            interval_table.push_back(train_start_row);
-            string end_Q = M[3];
-            for (int i = 55, j = 3; i < train_end_row; i++) {
-                if (days_table[i].substr(5, 2) == end_Q) {
-                    interval_table.push_back(i - 1);
-                    interval_table.push_back(i);
-                    end_Q = M[(j += 3) % 12];
-                    i += 55;
+            case 'Q': {  //做Q*
+                interval_table.push_back(train_start_row);
+                string end_Q = M[3];
+                for (int i = 55, j = 3; i < train_end_row; i++) {
+                    if (days_table[i].substr(5, 2) == end_Q) {
+                        interval_table.push_back(i - 1);
+                        interval_table.push_back(i);
+                        end_Q = M[(j += 3) % 12];
+                        i += 55;
+                    }
                 }
+                interval_table.push_back(train_end_row);
+                break;
             }
-            interval_table.push_back(train_end_row);
-            break;
-        }
-        case 'M': {    //做M*
-            interval_table.push_back(train_start_row);
-            string end_H = M[1];
-            for (int i = 15, j = 1; i < train_end_row; i++) {
-                if (days_table[i].substr(5, 2) == end_H) {
-                    interval_table.push_back(i - 1);
-                    interval_table.push_back(i);
-                    end_H = M[++j % 12];
-                    i += 15;
+            case 'M': {  //做M*
+                interval_table.push_back(train_start_row);
+                string end_H = M[1];
+                for (int i = 15, j = 1; i < train_end_row; i++) {
+                    if (days_table[i].substr(5, 2) == end_H) {
+                        interval_table.push_back(i - 1);
+                        interval_table.push_back(i);
+                        end_H = M[++j % 12];
+                        i += 15;
+                    }
                 }
+                interval_table.push_back(train_end_row);
+                break;
             }
-            interval_table.push_back(train_end_row);
-            break;
-        }
         }
     }
     else {
-        string mon = test_start_m;    //記錄目前iterate到什麼月份
-        string start;    //記錄sliding window開始月份
-        string end;    //記錄sliding window結束月份
-        int s_jump_e = 0;    //從period頭要找period尾
-        int e_jump_s = 0;    //從period尾要找下一個period頭
-        int skip = 0;    //M[]要跳幾個月份
-        switch (SW[0]) {    //看是什麼開頭，找出第一個訓練開始的row以及開始月份及結束月份
-        case 'Y': {
-            s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 13) - 1;
-            break;
+        string mon = test_start_m;  //記錄目前iterate到什麼月份
+        string start;  //記錄sliding window開始月份
+        string end;  //記錄sliding window結束月份
+        int s_jump_e = 0;  //從period頭要找period尾
+        int e_jump_s = 0;  //從period尾要找下一個period頭
+        int skip = 0;  //M[]要跳幾個月份
+        switch (SW[0]) {  //看是什麼開頭，找出第一個訓練開始的row以及開始月份及結束月份
+            case 'Y': {
+                s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 13) - 1;
+                break;
+            }
+            case 'H': {
+                s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 7) - 1;
+                break;
+            }
+            case 'Q': {
+                s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 4) - 1;
+                break;
+            }
+            case 'M': {
+                s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 2) - 1;
+                break;
+            }
         }
-        case 'H': {
-            s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 7) - 1;
-            break;
+        switch (SW[2]) {  //看是什麼結尾，找出最後一個訓練開始的row
+            case 'Y': {
+                skip = find_train_end(table_size, mon, train_end_row, 13) - 1;
+                break;
+            }
+            case 'H': {
+                skip = find_train_end(table_size, mon, train_end_row, 7) - 1;
+                break;
+            }
+            case 'Q': {
+                skip = find_train_end(table_size, mon, train_end_row, 4) - 1;
+                break;
+            }
+            case 'M': {
+                skip = find_train_end(table_size, mon, train_end_row, 2) - 1;
+                break;
+            }
         }
-        case 'Q': {
-            s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 4) - 1;
-            break;
-        }
-        case 'M': {
-            s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 2) - 1;
-            break;
-        }
-        }
-        switch (SW[2]) {    //看是什麼結尾，找出最後一個訓練開始的row
-        case 'Y': {
-            skip = find_train_end(table_size, mon, train_end_row, 13) - 1;
-            break;
-        }
-        case 'H': {
-            skip = find_train_end(table_size, mon, train_end_row, 7) - 1;
-            break;
-        }
-        case 'Q': {
-            skip = find_train_end(table_size, mon, train_end_row, 4) - 1;
-            break;
-        }
-        case 'M': {
-            skip = find_train_end(table_size, mon, train_end_row, 2) - 1;
-            break;
-        }
-        }
-        int train_s_M = 0, train_e_M = 12;    //記錄第一個訓練期開頭及結尾在M[]的index
+        int train_s_M = 0, train_e_M = 12;  //記錄第一個訓練期開頭及結尾在M[]的index
         for (int i = 0; i < 12; i++) {
             if (start == M[i]) {
                 train_s_M = i;
                 break;
             }
         }
-        if (SW[0] == SW[2]) {    //判斷從period尾要找下一個period頭需要跳多少
+        if (SW[0] == SW[2]) {  //判斷從period尾要找下一個period頭需要跳多少
             e_jump_s = 1;
         }
         else if (SW[2] == 'M') {
@@ -655,7 +655,7 @@ int store_RSI_and_price(string RSI_table_path, string stock_file_path, int slide
     for (int i = 0; i < table_size; i++) {
         days_table[i] = RSI_table_in[i][0];
     }
-    big_RSI_table = new double* [table_size];
+    big_RSI_table = new double*[table_size];
     for (int i = 0; i < table_size; i++) {
         big_RSI_table[i] = new double[257];
         for (int j = 1; j < 257; j++) {
@@ -682,21 +682,21 @@ int store_RSI_and_price(string RSI_table_path, string stock_file_path, int slide
     for (int i = 0, j = starting_row; j <= ending_row; i++, j++) {
         stock_table[i] = stod(stock_price_in[j][COL]);
     }
-    find_interval(table_size, slide);    //找出滑動間格
+    find_interval(table_size, slide);  //找出滑動間格
     return table_size;
 }
 
 void cal_RoR(int interval_index, ofstream& debug) {
     int stock_held = 0;
     double remain = TOTAL_CP_LV;
-    int flag = 0;    //記錄是否有交易過
+    int flag = 0;  //記錄是否有交易過
     for (int partical_num = 0; partical_num < PARTICAL_AMOUNT; partical_num++) {
         stock_held = 0;
         remain = TOTAL_CP_LV;
         flag = 0;
         // ===============================================================開始計算報酬率
         for (int i = interval_table[interval_index]; i <= interval_table[interval_index + 1]; i++) {
-            if (big_RSI_table[i][partical[partical_num].period_dec] <= partical[partical_num].buying_signal_dec && stock_held == 0) {    //買入訊號出現且無持股
+            if (big_RSI_table[i][partical[partical_num].period_dec] <= partical[partical_num].buying_signal_dec && stock_held == 0) {  //買入訊號出現且無持股
                 stock_held = remain / stock_table[i];
                 remain = remain - stock_table[i] * stock_held;
                 flag = 1;
@@ -705,21 +705,21 @@ void cal_RoR(int interval_index, ofstream& debug) {
                     partical[partical_num].trading_times--;
                 }
             }
-            else if (big_RSI_table[i][partical[partical_num].period_dec] >= partical[partical_num].selling_signal_dec && stock_held != 0) {    //賣出訊號出現且有持股
+            else if (big_RSI_table[i][partical[partical_num].period_dec] >= partical[partical_num].selling_signal_dec && stock_held != 0) {  //賣出訊號出現且有持股
                 remain += (double)stock_held * stock_table[i];
                 stock_held = 0;
             }
         }
-        if (flag == 0) {    //沒有交易過
+        if (flag == 0) {  //沒有交易過
             partical[partical_num].RoR = 0;
             partical[partical_num].final_cp_lv = 0;
         }
-        else if (stock_held != 0) {    //有交易過且有持股
+        else if (stock_held != 0) {  //有交易過且有持股
             remain += stock_held * stock_table[interval_table[interval_index + 1]];
             partical[partical_num].RoR = ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100;
             partical[partical_num].final_cp_lv = remain;
         }
-        else {    //有交易過但沒有持股
+        else {  //有交易過但沒有持股
             partical[partical_num].RoR = ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100;
             partical[partical_num].final_cp_lv = remain;
         }
@@ -735,7 +735,7 @@ void cal_RoR(int interval_index, ofstream& debug) {
         for (int i = 0; i < 7; i++) {
             debug << partical[partical_num].selling_signal_bi[i] << ",";
         }
-        debug << partical[partical_num].period_dec << "," << partical[partical_num].buying_signal_dec << "," << partical[partical_num].selling_signal_dec << "," <<partical[partical_num].RoR << endl;
+        debug << partical[partical_num].period_dec << "," << partical[partical_num].buying_signal_dec << "," << partical[partical_num].selling_signal_dec << "," << partical[partical_num].RoR << endl;
     }
 
     if (Lbest.RoR != 0) {
@@ -759,7 +759,7 @@ void cal(int interval_index, ofstream& debug) {
 void output(int interval_index, int slide, string company) {
     ofstream data;
     data.open(output_path + "/" + company + "/" + sliding_windows[slide] + "/" +
-        days_table[interval_table[interval_index]] + "_" + days_table[interval_table[interval_index + 1]] + ".csv");
+              days_table[interval_table[interval_index]] + "_" + days_table[interval_table[interval_index + 1]] + ".csv");
     data << "Generation," << generation << endl;
     data << "Partical amount," << PARTICAL_AMOUNT << endl;
     data << "Delta," << delta << endl;
@@ -793,7 +793,7 @@ void output(int interval_index, int slide, string company) {
         int flag = 0;
         int throw_out = 0;
         for (int i = interval_table[interval_index]; i <= interval_table[interval_index + 1]; i++) {
-            if (big_RSI_table[i][the_best.period_dec] <= the_best.buying_signal_dec && stock_held == 0) {    //買入訊號出現且無持股
+            if (big_RSI_table[i][the_best.period_dec] <= the_best.buying_signal_dec && stock_held == 0) {  //買入訊號出現且無持股
                 stock_held = remain / stock_table[i];
                 remain = remain - stock_table[i] * stock_held;
                 if (i != interval_table[interval_index + 1]) {
@@ -804,7 +804,7 @@ void output(int interval_index, int slide, string company) {
                     flag = 1;
                 }
             }
-            else if (big_RSI_table[i][the_best.period_dec] >= the_best.selling_signal_dec && stock_held != 0) {    //賣出訊號出現且有持股
+            else if (big_RSI_table[i][the_best.period_dec] >= the_best.selling_signal_dec && stock_held != 0) {  //賣出訊號出現且有持股
                 remain += (double)stock_held * stock_table[i];
                 stock_held = 0;
                 data << "Sell," + days_table[i] + "," << stock_table[i] << "," << big_RSI_table[i][the_best.period_dec] << "," << stock_held;
@@ -813,7 +813,7 @@ void output(int interval_index, int slide, string company) {
             }
             throw_out = i;
         }
-        if (stock_held != 0) {    //有交易過且有持股
+        if (stock_held != 0) {  //有交易過且有持股
             remain += stock_held * stock_table[throw_out];
             stock_held = 0;
             if (flag != 1) {
@@ -831,7 +831,7 @@ int main(void) {
     ofstream debug;
     debug.open("debug.csv");
     vector< string > RSI_file = get_file(RSI_path);
-    vector< string > stock_file = get_stock_file();    //記錄有哪些股票檔案
+    vector< string > stock_file = get_stock_file();  //記錄有哪些股票檔案
     // for (int i = 0; i < stock_file.size(); i++) {  //生成公司folder
     //     create_folder(stock_file[i], "N");
     // }
@@ -847,7 +847,7 @@ int main(void) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         for (int slide = 1; slide < 2; slide++) {
-            total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);    //用超大陣列記錄所有RSI及股價
+            total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
             for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
                 debug << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
