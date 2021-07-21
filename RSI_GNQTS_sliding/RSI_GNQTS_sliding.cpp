@@ -846,13 +846,14 @@ int main(void) {
     for (int company_index = 0; company_index < 1; company_index++) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
-        for (int slide = 1; slide < 2; slide++) {
+        int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
+        for (int slide = 1; slide < 2 /*slideNum*/; slide++) {
+            srand(343);
             total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
             for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
                 debug << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
                 cout << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
-                srand(343);
                 the_best_ini();
                 for (int exp = 0; exp < exp_times; exp++) {
                     // cout << "exp: " << exp + 1 << "   ";
