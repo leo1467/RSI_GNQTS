@@ -365,3 +365,4 @@ FodyWeavers.xsd
 .DS_Store
 RSI_GNQTS_sliding/RSI_GNQTS_sliding
 RSI_GNQTS_sliding/RSI_GNQTS_sliding.exe
+*.txt

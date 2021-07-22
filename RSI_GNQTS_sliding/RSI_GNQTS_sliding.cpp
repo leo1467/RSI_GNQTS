@@ -26,7 +26,7 @@ using namespace std;
 #define TOTAL_CP_LV 10000000.0
 
 double delta = 0.003;
-int exp_times = 1;
+int exp_times = 50;
 int generation = 1000;
 
 string starting_date = "2010-01-04";
@@ -835,8 +835,6 @@ void output(int interval_index, int slide, string company) {
 }
 
 int main(void) {
-    ofstream debug;
-    debug.open("debug.csv");
     vector< string > RSI_file = get_file(RSI_path);
     vector< string > stock_file = get_stock_file();  //記錄有哪些股票檔案
     // for (int i = 0; i < stock_file.size(); i++) {  //生成公司folder
@@ -854,21 +852,25 @@ int main(void) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
-        for (int slide = 1; slide < slideNum; slide++) {
+        for (int slide = 1; slide < 2; slide++) {
             srand(343);
             total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
             for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
+                ofstream debug;
+                debug.open("debug" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + ".txt");
                 debug << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
                 cout << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
                 the_best_ini();
                 for (int exp = 0; exp < exp_times; exp++) {
+                    debug << "exp:" << exp << endl;
                     // cout << "exp: " << exp + 1 << "   ";
                     cal(interval_index, debug);
                     the_best_update();
                     // cout << Gbest.RoR << "%" << endl;
                 }
                 // output(interval_index, slide, company[company_index]);
+                debug.close();
                 cout << the_best.RoR << "%" << endl;
             }
             interval_table.clear();
@@ -880,5 +882,4 @@ int main(void) {
         }
         delete[] big_RSI_table;
     }
-    debug.close();
 }
