@@ -49,17 +49,17 @@ vector< int > interval_table;  //記錄滑動區間
 
 struct prob {
     double period[8];
-    double buying_signal[7];
-    double selling_signal[7];
+    double buying_signal[7];  //oversold
+    double selling_signal[7];  //overbought
 } prob_matrix;
 
 struct partical {
     int period_bi[8];
-    int buying_signal_bi[7];
-    int selling_signal_bi[7];
+    int buying_signal_bi[7];  //oversold
+    int selling_signal_bi[7];  //overbought
     int period_dec;
-    int buying_signal_dec;
-    int selling_signal_dec;
+    int buying_signal_dec;  //oversold
+    int selling_signal_dec;  //overbought
     double RoR;
     double final_cp_lv;
     int trading_times;
@@ -169,18 +169,21 @@ void local_ini() {
 }
 
 void global_ini() {
-    for (int i = 0; i < PARTICAL_AMOUNT; i++) {
-        for (int j = 0; j < 8; j++) {
-            partical[i].period_bi[j] = 0;
-        }
-        for (int j = 0; j < 7; j++) {
-            partical[i].buying_signal_bi[j] = 0;
-            partical[i].selling_signal_bi[j] = 0;
-        }
-        partical[i].period_dec = 0;
-        partical[i].buying_signal_dec = 0;
-        partical[i].selling_signal_dec = 0;
-    }
+    // for (int i = 0; i < PARTICAL_AMOUNT; i++) {
+    //     for (int j = 0; j < 8; j++) {
+    //         partical[i].period_bi[j] = 0;
+    //     }
+    //     for (int j = 0; j < 7; j++) {
+    //         partical[i].buying_signal_bi[j] = 0;
+    //         partical[i].selling_signal_bi[j] = 0;
+    //     }
+    //     partical[i].period_dec = 0;
+    //     partical[i].buying_signal_dec = 0;
+    //     partical[i].selling_signal_dec = 0;
+    //     partical[i].RoR = 0;
+    //     partical[i].final_cp_lv = 0;
+    //     partical[i].trading_times = 0;
+    // }
     for (int i = 0; i < 8; i++) {
         Gbest.period_bi[i] = 0;
         Gworest.period_bi[i] = 0;
@@ -232,9 +235,10 @@ void prob_matrix_ini() {
     }
 }
 
-void partical_compare_rand() {
+void partical_compare_rand(ofstream& debug) {
     double r;
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < PARTICAL_AMOUNT; i++) {
+        debug << "r" << i << ",";
         for (int j = 0; j < 8; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
@@ -244,6 +248,7 @@ void partical_compare_rand() {
             else {
                 partical[i].period_bi[j] = 0;
             }
+            debug << r << ",";
         }
         for (int j = 0; j < 7; j++) {
             r = rand();
@@ -254,6 +259,7 @@ void partical_compare_rand() {
             else {
                 partical[i].buying_signal_bi[j] = 0;
             }
+            debug << r << ",";
         }
         for (int j = 0; j < 7; j++) {
             r = rand();
@@ -264,7 +270,9 @@ void partical_compare_rand() {
             else {
                 partical[i].selling_signal_bi[j] = 0;
             }
+            debug << r << ",";
         }
+        debug << endl;
     }
 }
 
@@ -371,7 +379,6 @@ void global_update(ofstream& debug) {
     }
     debug << Lworst.period_dec << "," << Lworst.buying_signal_dec << "," << Lworst.selling_signal_dec << "," << Lworst.RoR << endl;
     //===============================================================================
-
     for (int i = 0; i < 8; i++) {
         if (Gbest.period_bi[i] == 1 && Lworst.period_bi[i] == 0 && prob_matrix.period[i] < 0.5) {
             prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
@@ -749,7 +756,7 @@ void cal(int interval_index, ofstream& debug) {
     for (int gen = 0; gen < generation; gen++) {
         debug << "gen: " << gen << endl;
         local_ini();
-        partical_compare_rand();
+        partical_compare_rand(debug);
         bi_to_dec();
         cal_RoR(interval_index, debug);
     }
