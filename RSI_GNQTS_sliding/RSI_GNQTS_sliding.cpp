@@ -3,7 +3,7 @@
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
 
@@ -35,12 +35,12 @@ string test_start_y = to_string(stoi(starting_date.substr(0, 4)) + 1);
 string test_start_m = starting_date.substr(5, 2);
 string sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H*", "H2H", "H2Q", "H2M", "Q*", "Q2Q", "Q2M", "M*", "M2M"};
 
-string RSI_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
-string price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
-string output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
-// string RSI_path = "D:/stock_info/all_RSI_table";
-// string price_path = "D:/stock_info/all_price";
-// string output_path = "D:/stock_info/all_sw";
+// string RSI_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
+// string price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
+// string output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
+string RSI_path = "D:/stock_info/all_RSI_table";
+string price_path = "D:/stock_info/all_price";
+string output_path = "D:/stock_info/all_sw";
 
 string* days_table;  //記錄開始日期到結束日期
 double** big_RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
