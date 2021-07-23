@@ -236,7 +236,7 @@ void the_best_ini() {
     the_best.trading_times = 0;
 }
 
-void prob_matrix_ini() {
+void beta_matrix_ini() {
     for (int i = 0; i < 8; i++) {
         prob_matrix.period[i] = 0.5;
     }
@@ -246,7 +246,7 @@ void prob_matrix_ini() {
     }
 }
 
-void partical_compare_rand(/*ofstream& debug*/) {
+void measure(/*ofstream& debug*/) {
     double r;
     for (int i = 0; i < PARTICAL_AMOUNT; i++) {
         // debug << "r" << i << ",";
@@ -765,11 +765,11 @@ void cal_RoR(int interval_index /*, ofstream& debug*/, int& earlestGen, int gen)
 
 void cal(int interval_index /*, ofstream& debug*/, int& earlestGen) {
     global_ini();
-    prob_matrix_ini();
+    beta_matrix_ini();
     for (int gen = 0; gen < generation; gen++) {
         // debug << "gen: " << gen << endl;
         local_ini();
-        partical_compare_rand(/*debug*/);
+        measure(/*debug*/);
         bi_to_dec();
         cal_RoR(interval_index /*, debug*/, earlestGen, gen);
     }
@@ -867,7 +867,7 @@ int main(void) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
-        for (int slide = 1; slide < slideNum; slide++) {
+        for (int slide = 1; slide < 2; slide++) {
             srand(343);
             total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
