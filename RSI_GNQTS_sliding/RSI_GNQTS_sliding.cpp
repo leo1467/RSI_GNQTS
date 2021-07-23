@@ -801,9 +801,9 @@ void output(int interval_index, int slide, string company, int earlestExp, int e
     data << "Trading times," << the_best.trading_times << endl;
     data << fixed << setprecision(2) << "Rate of return," << the_best.RoR << "%" << endl;
     data << endl;
-    data << "Earliest exp," << earlestExp << endl;
-    data << "Earliest gen," << earlestGen << endl;
-    data << "Finding times," << endl;
+    data << "first best exp," << earlestExp << endl;
+    data << "first best gen," << earlestGen << endl;
+    data << "best times," << endl;
     data << endl;
     data << "Trading record,Date,Price,RSI,Stock held,Remain,Capital Lv" << endl;
     // ===============================================================開始輸出每次交易細節
@@ -867,13 +867,14 @@ int main(void) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
-        for (int slide = 1; slide < 2; slide++) {
+        for (int slide = 1; slide < slideNum; slide++) {
             srand(343);
             total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
             for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
                 int earlestExp = 0;
                 int earlestGen = 0;
+                int theBestGen = 0;
                 int bestTimes = 0;
                 // debug << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
                 cout << "===" + days_table[interval_table[interval_index]] + "~" + days_table[interval_table[interval_index + 1]] + "===" << endl;
@@ -883,11 +884,13 @@ int main(void) {
                     cal(interval_index /*, debug*/, earlestGen);
                     if (the_best.RoR < Gbest.RoR) {
                         earlestExp = exp;
+                        theBestGen = earlestGen;
                     }
                     the_best_update();
+
                     // cout << Gbest.RoR << "%" << endl;
                 }
-                output(interval_index, slide, company[company_index], earlestExp + 1, earlestGen + 1);
+                output(interval_index, slide, company[company_index], earlestExp + 1, theBestGen + 1);
                 cout << the_best.RoR << "%" << endl;
             }
             interval_table.clear();
