@@ -366,3 +366,5 @@ FodyWeavers.xsd
 RSI_GNQTS_sliding/RSI_GNQTS_sliding
 RSI_GNQTS_sliding/RSI_GNQTS_sliding.exe
 *.txt
+test.cpp
+*.exe
