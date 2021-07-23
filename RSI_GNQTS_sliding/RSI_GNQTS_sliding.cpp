@@ -63,7 +63,7 @@ struct partical {
     double RoR;
     double final_cp_lv;
     int trading_times;
-} partical[PARTICAL_AMOUNT], the_best, Gbest, Gworest, Lbest, Lworst;
+} partical[PARTICAL_AMOUNT], the_best, Gbest, Gworst, Lbest, Lworst;
 
 vector< vector< string > > readData(string filename) {
     // cout << filename << endl;
@@ -153,6 +153,17 @@ void local_ini() {
         partical[i].final_cp_lv = 0;
         partical[i].trading_times = 0;
     }
+
+    for (int i = 0; i < 8; i++) {
+        Lbest.period_bi[i] = 0;
+        Lworst.period_bi[i] = 0;
+    }
+    for (int i = 0; i < 7; i++) {
+        Lbest.buying_signal_bi[i] = 0;
+        Lbest.selling_signal_bi[i] = 0;
+        Lworst.buying_signal_bi[i] = 0;
+        Lworst.selling_signal_bi[i] = 0;
+    }
     Lbest.period_dec = 0;
     Lbest.buying_signal_dec = 0;
     Lbest.selling_signal_dec = 0;
@@ -186,13 +197,13 @@ void global_ini() {
     // }
     for (int i = 0; i < 8; i++) {
         Gbest.period_bi[i] = 0;
-        Gworest.period_bi[i] = 0;
+        Gworst.period_bi[i] = 0;
     }
     for (int i = 0; i < 7; i++) {
         Gbest.buying_signal_bi[i] = 0;
         Gbest.selling_signal_bi[i] = 0;
-        Gworest.buying_signal_bi[i] = 0;
-        Gworest.selling_signal_bi[i] = 0;
+        Gworst.buying_signal_bi[i] = 0;
+        Gworst.selling_signal_bi[i] = 0;
     }
     Gbest.period_dec = 0;
     Gbest.buying_signal_dec = 0;
@@ -201,12 +212,12 @@ void global_ini() {
     Gbest.final_cp_lv = 0;
     Gbest.trading_times = 0;
 
-    Gworest.period_dec = 0;
-    Gworest.buying_signal_dec = 0;
-    Gworest.selling_signal_dec = 0;
-    Gworest.RoR = 100000;
-    Gworest.final_cp_lv = 0;
-    Gworest.trading_times = 0;
+    Gworst.period_dec = 0;
+    Gworst.buying_signal_dec = 0;
+    Gworst.selling_signal_dec = 0;
+    Gworst.RoR = 100000;
+    Gworst.final_cp_lv = 0;
+    Gworst.trading_times = 0;
 }
 
 void the_best_ini() {
