@@ -25,6 +25,8 @@ using namespace std;
 #define COL 4  //股價在第幾column
 #define TOTAL_CP_LV 10000000.0
 
+#define MODE 1
+
 double delta = 0.003;
 int exp_times = 50;
 int generation = 1000;
@@ -847,7 +849,7 @@ void output(int interval_index, int slide, string company, int earlestExp, int e
     data.close();
 }
 
-int main(void) {
+void startTrain() {
     // ofstream debug;
     // debug.open("debug.csv");
     vector< string > RSI_file = get_file(RSI_path);
@@ -903,4 +905,27 @@ int main(void) {
         delete[] big_RSI_table;
     }
     // debug.close();
+}
+
+void startTest() {
+    vector< string > company = get_file(output_path);
+    for (int i = 0; i < company.size(); i++) {
+        cout << company[i] << endl;
+    }
+    int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
+    cout << output_path + "/" + company[0] + "/" + sliding_windows[0] << endl;
+}
+
+int main(void) {
+    switch (MODE) {
+        case 0:
+            startTrain();
+            break;
+        case 1:
+            startTest();
+            break;
+        default:
+            cout << "Wrong MODE" << endl;
+            break;
+    }
 }
