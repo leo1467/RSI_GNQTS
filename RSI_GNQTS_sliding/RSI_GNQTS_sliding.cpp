@@ -3,7 +3,7 @@
 //
 //
 //
-// #include <dirent.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -16,16 +16,16 @@
 #include <string>
 #include <vector>
 
-#include "dirent.h"
+// #include "dirent.h"
 
 using namespace std;
 
 #define PARTICAL_AMOUNT 10
 #define START 2  //股價csv裡的開始欄位
-#define COL 4  //股價在第幾column
+#define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 1
+#define MODE 1  //0:train, 1:test
 
 double delta = 0.003;
 int exp_times = 50;
@@ -37,12 +37,12 @@ string test_start_y = to_string(stoi(starting_date.substr(0, 4)) + 1);
 string test_start_m = starting_date.substr(5, 2);
 string sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
-// string RSI_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
-// string price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
-// string output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
-string RSI_path = "D:/stock_info/all_RSI_table";
-string price_path = "D:/stock_info/all_price";
-string output_path = "D:/stock_info/all_sw";
+string RSI_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
+string price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
+string output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
+// string RSI_path = "D:/stock_info/all_RSI_table";
+// string price_path = "D:/stock_info/all_price";
+// string output_path = "D:/stock_info/all_sw";
 
 string* days_table;  //記錄開始日期到結束日期
 double** big_RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
@@ -66,6 +66,43 @@ struct partical {
     double final_cp_lv;
     int trading_times;
 } partical[PARTICAL_AMOUNT], the_best, Gbest, Gworst, Lbest, Lworst;
+
+void create_folder(string company, string slide_folder) {
+    string s;
+    if (slide_folder == "company") {
+        for (int i = 0; i < 4; i++) {
+            company.pop_back();
+        }
+        s = output_path + "/" + company;
+    }
+    else if (slide_folder == "train" || slide_folder == "test") {
+        s = output_path + "/" + company + "/" + slide_folder;
+    }
+    else {
+        s = output_path + "/" + company + "/train/" + slide_folder;
+        struct stat info;
+        if (stat(s.c_str(), &info) != 0) {
+            cout << "cannot access " << s << endl;
+            if (mkdir(s.c_str(), 0777) == -1) {
+                cerr << "Error : " << strerror(errno) << endl;
+            }
+            else {
+                cout << "Directory created" << endl;
+            }
+        }
+        s = output_path + "/" + company + "/test/" + slide_folder;
+    }
+    struct stat info;
+    if (stat(s.c_str(), &info) != 0) {
+        cout << "cannot access " << s << endl;
+        if (mkdir(s.c_str(), 0777) == -1) {
+            cerr << "Error : " << strerror(errno) << endl;
+        }
+        else {
+            cout << "Directory created" << endl;
+        }
+    }
+}
 
 vector< vector< string > > readData(string filename) {
     // cout << filename << endl;
@@ -101,6 +138,7 @@ vector< string > get_file(string RSI_table_path) {
             continue;
         }
         file_name.push_back(ptr->d_name);
+        // cout << ptr->d_name << endl;
     }
     closedir(dir);
     sort(file_name.begin(), file_name.end());
@@ -684,11 +722,11 @@ int store_RSI_and_price(string RSI_table_path, string stock_file_path, int slide
     }
     vector< vector< string > > stock_price_in = readData(stock_file_path);
     int price_size = (int)stock_price_in.size();
-    int starting_row = 0;
+    int startingRow = 0;
     int ending_row = 0;
     for (int i = 0; i < price_size; i++) {
         if (stock_price_in[i][0] == starting_date) {
-            starting_row = i;
+            startingRow = i;
             for (; i < price_size; i++) {
                 if (stock_price_in[i][0] == ending_date) {
                     ending_row = i;
@@ -699,10 +737,12 @@ int store_RSI_and_price(string RSI_table_path, string stock_file_path, int slide
         }
     }
     stock_table = new double[table_size];
-    for (int i = 0, j = starting_row; j <= ending_row; i++, j++) {
+    for (int i = 0, j = startingRow; j <= ending_row; i++, j++) {
         stock_table[i] = stod(stock_price_in[j][COL]);
     }
-    find_interval(table_size, slide);  //找出滑動間格
+    if (MODE == 0) {
+        find_interval(table_size, slide);  //找出滑動間格
+    }
     return table_size;
 }
 
@@ -780,7 +820,7 @@ void cal(int interval_index /*, ofstream& debug*/, int& earlestGen) {
 
 void output(int interval_index, int slide, string company, int earlestExp, int earlestGen) {
     ofstream data;
-    data.open(output_path + "/" + company + "/" + sliding_windows[slide] + "/" +
+    data.open(output_path + "/" + company + "/train/" + sliding_windows[slide] + "/" +
               days_table[interval_table[interval_index]] + "_" + days_table[interval_table[interval_index + 1]] + ".csv");
     data << "Generation," << generation << endl;
     data << "Partical amount," << PARTICAL_AMOUNT << endl;
@@ -849,27 +889,31 @@ void output(int interval_index, int slide, string company, int earlestExp, int e
     data.close();
 }
 
-void startTrain() {
+void start_train() {
     // ofstream debug;
     // debug.open("debug.csv");
-    vector< string > RSI_file = get_file(RSI_path);
-    vector< string > stock_file = get_stock_file();  //記錄有哪些股票檔案
-    // for (int i = 0; i < stock_file.size(); i++) {  //生成公司folder
-    //     create_folder(stock_file[i], "N");
-    // }
+    vector< string > RSI_file = get_file(RSI_path);  //fetch RSI table
+    vector< string > stock_file = get_stock_file();  //fectch stock price
+    for (int i = 0; i < stock_file.size(); i++) {  //create company folder
+        create_folder(stock_file[i], "company");
+    }
     vector< string > company = get_folder();
-    // for (int i = 0; i < company.size(); i++) {  //生成SW folder
-    //     cout << company[i] << endl;
-    //     for (int j = 0; j < sizeof(sliding_windows) / sizeof(sliding_windows[0]); j++) {
-    //         create_folder(company[i], sliding_windows[j]);
-    //     }
-    // }
-    int com_num = (int)company.size();
-    for (int company_index = 0; company_index < 1; company_index++) {
+    int companyNum = company.size();
+    for (int i = 0; i < companyNum; i++) {  //create train and test folder
+        create_folder(company[i], "train");
+        create_folder(company[i], "test");
+    }
+    for (int i = 0; i < companyNum; i++) {  //create SW folder
+        cout << company[i] << endl;
+        for (int j = 0; j < sizeof(sliding_windows) / sizeof(sliding_windows[0]); j++) {
+            create_folder(company[i], sliding_windows[j]);
+        }
+    }
+    for (int company_index = 0; company_index < companyNum; company_index++) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
-        for (int slide = 1; slide < 2; slide++) {
+        for (int slide = 0; slide < slideNum; slide++) {
             srand(343);
             total_days = store_RSI_and_price(RSI_path + "/" + RSI_file[company_index], price_path + "/" + stock_file[company_index], slide);  //用超大陣列記錄所有RSI及股價
             int interval_cnt = (int)interval_table.size();
@@ -889,7 +933,6 @@ void startTrain() {
                         theBestGen = earlestGen;
                     }
                     the_best_update();
-
                     // cout << Gbest.RoR << "%" << endl;
                 }
                 output(interval_index, slide, company[company_index], earlestExp + 1, theBestGen + 1);
@@ -907,22 +950,117 @@ void startTrain() {
     // debug.close();
 }
 
-void startTest() {
-    vector< string > company = get_file(output_path);
-    for (int i = 0; i < company.size(); i++) {
-        cout << company[i] << endl;
+void test_period_RoR(string* days, double* price, double** RSITable, string startingDate, string endingDate, int period, int buySignal, int sellSignal, int totalDays) {
+    int startingRow = 0;
+    for (int i = 0; i < totalDays; i++) {
+        if (days[i] == startingDate) {
+            startingRow = i;
+            break;
+        }
     }
-    int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);
-    cout << output_path + "/" + company[0] + "/" + sliding_windows[0] << endl;
+    int endingRow = 0;
+    for (int i = startingRow; i < totalDays; i++) {
+        if (days[i] == endingDate) {
+            endingRow = i;
+            break;
+        }
+    }
+    cout << days[startingRow] << endl;
+    cout << days[endingRow] << endl;
+
+    int stockHeld = 0;
+    double remain = 0;
+    int flag = 0;  //記錄手上有錢還是有股票
+    int sellNum = 0;
+    int buyNum = 0;
+    // for (int i = startingRow; i <= endingRow - period + 1; i++) { why endingRow - period + 1===============
+    for (int i = startingRow; i <= endingRow; i++) {
+        if (RSITable[i][period] <= buySignal && stockHeld == 0) {  //買入訊號出現且無持股
+            if (flag == 0) {  //等待第一次RSI小於low_bound
+                buyNum++;
+                stockHeld = TOTAL_CP_LV / price[i];
+                remain = TOTAL_CP_LV - price[i] * stockHeld;
+                flag = 1;
+                cout << "buy: " << days[i] << "," << price[i] << "," << RSITable[i][period] << "," << remain << endl;
+            }
+            else {
+                buyNum++;
+                stockHeld = remain / price[i];
+                remain -= (double)stockHeld * price[i];
+                cout << "buy: " << days[i] << "," << price[i] << "," << RSITable[i][period] << "," << remain << endl;
+            }
+        }
+        else if (RSITable[i][period] >= sellSignal && stockHeld != 0) {  //賣出訊號出現且有持股
+            sellNum++;
+            remain += (double)stockHeld * price[i];
+            stockHeld = 0;
+            cout << "sell: " << days[i] << "," << price[i] << "," << RSITable[i][period] << "," << remain << endl;
+        }
+    }
+    if (flag == 0) {
+        cout << fixed << setprecision(10) << "0%" << endl;
+    }
+    else if (stockHeld != 0) {
+        sellNum++;
+        remain += stockHeld * price[endingRow];
+        cout << "sell: " << days[endingRow] << "," << price[endingRow] << "," << RSITable[endingRow][period] << "," << remain << endl;
+        cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
+    }
+    else {  //有交易過且在最後一天沒有持有股票
+        //不做事
+        cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%," << endl;
+    }
+    cout << "trading times: " << sellNum << endl;
+}
+
+void start_test() {
+    vector< string > company = get_file(output_path);  //fetch companies name
+    /* for (int i = 0; i < company.size(); i++) {
+        cout << company[i] << endl;
+    } */
+    int companyNum = company.size();  //calculate the number of companies
+    vector< string > RSI_table = get_file(RSI_path);  //fetch RSI table
+    for (int whichCompany = 0; whichCompany < 1; whichCompany++) {
+        cout << company[whichCompany] << endl;
+        int totalDays = store_RSI_and_price(RSI_path + "/" + RSI_table[whichCompany], price_path + "/" + company[whichCompany] + ".csv", 0);  // store RSI and price
+        int slideNum = sizeof(sliding_windows) / sizeof(sliding_windows[0]);  //calculate the number of sliding windows
+        for (int slideUse = 1; slideUse < 2; slideUse++) {  //A2A no test period
+            // cout << output_path + "/" + company[whichCompany] + "/train/" + sliding_windows[slideUse] << endl;
+            vector< string > strategy = get_file(output_path + "/" + company[whichCompany] + "/train/" + sliding_windows[slideUse]);  //fetch strategy files under certain SW
+            // cout << company[whichCompany] + ":" + sliding_windows[slideUse] << endl;
+
+            // for (int i = 0; i < strategyNum; i++) {
+            //     cout << strategy[i] << endl;
+            // }
+            int strategyNum = strategy.size();  //calculate number of stategy files
+            for (int strategyUse = 0; strategyUse < 1; strategyUse++) {
+                string startingDate = strategy[strategyUse].substr(0, 10);  //cut starting date
+                string endingDate = strategy[strategyUse].substr(11, 10);  //cut ending date
+                string straPath = output_path + "/" + company[whichCompany] + "/train/" + sliding_windows[slideUse] + "/" + strategy[strategyUse];  //strategy file path
+                cout << straPath << endl;
+                vector< vector< string > > straIn = readData(straPath);
+                int period = stod(straIn[9][1]);
+                int buySignal = stod(straIn[10][1]);
+                int sellSignal = stod(straIn[11][1]);
+                test_period_RoR(days_table, stock_table, big_RSI_table, startingDate, endingDate, period, buySignal, sellSignal, totalDays);
+            }
+        }
+        delete[] days_table;
+        delete[] stock_table;
+        for (int i = 0; i < totalDays; i++) {
+            delete[] big_RSI_table[i];
+        }
+        delete[] big_RSI_table;
+    }
 }
 
 int main(void) {
     switch (MODE) {
         case 0:
-            startTrain();
+            start_train();
             break;
         case 1:
-            startTest();
+            start_test();
             break;
         default:
             cout << "Wrong MODE" << endl;
