@@ -95,6 +95,6 @@
         "span": "cpp"
     },
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignTrailingComments: false, SpaceBeforeParens: true, BreakBeforeBraces: Custom, BraceWrapping: { BeforeElse: true }, SpacesInAngles: true, SpacesBeforeTrailingComments: 2}",
-    "editor.wordWrap": "on",
-    "diffEditor.wordWrap": "off"
+    "diffEditor.wordWrap": "off",
+    "editor.wordWrap": "on"
 }
