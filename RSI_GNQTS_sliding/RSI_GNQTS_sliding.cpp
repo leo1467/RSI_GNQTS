@@ -544,8 +544,6 @@ int find_train_start(int test_s_row, string mon, int& train_start_row, string& s
 }
 
 void sliding_start_end(int table_size, string SW, int sliding_type_int) {
-    int train_start_row = 0;  //記錄訓練期開始的row
-    int train_end_row = 0;  //記錄訓練期結束的row
     string M[] = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
     int test_s_row = 0;  //記錄測試期開始row
     for (int i = 230; i < 300; i++) {  //找出測試期開始的row
@@ -554,6 +552,8 @@ void sliding_start_end(int table_size, string SW, int sliding_type_int) {
             break;
         }
     }
+    int train_start_row = 0;  //記錄訓練期開始的row
+    int train_end_row = 0;  //記錄訓練期結束的row
     if (sliding_type_int == 2) {  //判斷year-on-year
         train_start_row = 0;
         string train_end_y = to_string(stoi(ending_date.substr(0, 4)) - 1);
@@ -692,13 +692,13 @@ void sliding_start_end(int table_size, string SW, int sliding_type_int) {
     }
 }
 
-void find_interval(int table_size, int slide) {
+void find_interval(int table_size, int slide) {  //將A2A跟其他分開
     cout << "looking for interval " + sliding_windows[slide] << endl;
-    if (sliding_windows[slide] == "A2A") {
+    if (sliding_windows[slide] == "A2A") {  //直接給A2A的起始與結束row
         interval_table.push_back(0);
         interval_table.push_back(table_size - 1);
     }
-    else {
+    else {  //開始找普通滑動視窗的起始與結束
         sliding_start_end(table_size, sliding_windows[slide], (int)sliding_windows[slide].size());
     }
     for (int i = 0; i < interval_table.size(); i += 2) {
