@@ -892,8 +892,8 @@ void output(int interval_index, int slide, string company, int earlestExp, int e
 void start_train() {
     // ofstream debug;
     // debug.open("debug.csv");
-    vector< string > RSI_file = get_file(_RSI_table_path);  //fetch RSI table
-    vector< string > stock_file = get_stock_file();  //fectch stock price
+    vector< string > RSI_file = get_file(_RSI_table_path);  //get RSI table
+    vector< string > stock_file = get_stock_file();  //get stock price
     for (int i = 0; i < stock_file.size(); i++) {  //create company folder
         create_folder(stock_file[i], "company");
     }
@@ -1063,19 +1063,19 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
 }
 
 void start_test() {
-    vector< string > company = get_file(_output_path);  //fetch companies name
+    vector< string > company = get_file(_output_path);  //get companies name
     /* for (int i = 0; i < company.size(); i++) {
         cout << company[i] << endl;
     } */
     int companyNum = company.size();
-    vector< string > RSI_table = get_file(_RSI_table_path);  //fetch RSI table
+    vector< string > RSI_table = get_file(_RSI_table_path);  //get RSI table
     for (int whichCompany = 0; whichCompany < 1; whichCompany++) {
         cout << "===========================" + company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]) - 1;  //No A2A
         for (int windowUse = 1; windowUse < 2; windowUse++) {
             cout << company[whichCompany] + ":" + _sliding_windows[windowUse] << endl;
-            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //fetch strategy files
+            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
             // for (int i = 0; i < strategy.size(); i++) {
             //     cout << strategy[i] << endl;
             // }
