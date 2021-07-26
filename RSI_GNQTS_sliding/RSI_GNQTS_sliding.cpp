@@ -293,7 +293,7 @@ void measure(/*ofstream& debug*/) {
         for (int j = 0; j < 8; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.period[j]) {
+            if (r <= prob_matrix.period[j]) {
                 partical[i].period_bi[j] = 1;
             }
             else {
@@ -304,7 +304,7 @@ void measure(/*ofstream& debug*/) {
         for (int j = 0; j < 7; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.buying_signal[j]) {
+            if (r <= prob_matrix.buying_signal[j]) {
                 partical[i].buying_signal_bi[j] = 1;
             }
             else {
@@ -315,7 +315,7 @@ void measure(/*ofstream& debug*/) {
         for (int j = 0; j < 7; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.selling_signal[j]) {
+            if (r <= prob_matrix.selling_signal[j]) {
                 partical[i].selling_signal_bi[j] = 1;
             }
             else {
@@ -800,9 +800,7 @@ void cal_train_RoR(int interval_index /*, ofstream& debug*/, int& earlestGen, in
     if (Gbest.RoR < Lbest.RoR) {
         earlestGen = gen;
     }
-    if (Lbest.RoR != 0) {
-        update_global(/*debug*/);
-    }
+    update_global(/*debug*/);
 }
 
 void cal(int interval_index /*, ofstream& debug*/, int& earlestGen) {
@@ -983,6 +981,9 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
         for (int j = 0; j < tradeReord[i].size(); j++) {
             test << tradeReord[i][j] << endl;
         }
+        if (i % 2 == 1) {
+            test << endl;
+        }
     }
     test.close();
 }
@@ -1013,7 +1014,7 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
     // for (int i = startingRow; i <= endingRow - period + 1; i++) { why endingRow - period + 1===============
     vector< vector< string > > tradeRecord;
     vector< string > oneTradeRecord;
-    for (int i = startingRow; i <= endingRow; i++) {
+    for (int i = startingRow; i < endingRow; i++) {
         // string tmp;
         if (_RSI_table[i][period] <= buySignal && stockHeld == 0) {  //買入訊號出現且無持股
             if (flag == 0) {  //等待第一次RSI小於low_bound
@@ -1043,6 +1044,7 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
             stockHeld = 0;
             oneTradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHeld));
             tradeRecord.push_back(oneTradeRecord);
+            oneTradeRecord.clear();
             // tmp = "sell " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
             // oneTradeRecord.push_back(tmp);
             // cout << "sell: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
@@ -1051,6 +1053,7 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
     if (stockHeld != 0) {
         sellNum++;
         remain += stockHeld * _price_table[endingRow];
+        stockHeld = 0;
         oneTradeRecord.push_back("sell," + _days_table[endingRow] + "," + to_string(_price_table[endingRow]) + "," + to_string(_RSI_table[endingRow][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[endingRow] * stockHeld));
         tradeRecord.push_back(oneTradeRecord);
         // cout << "sell: " << _days_table[endingRow] << "," << _price_table[endingRow] << "," << _RSI_table[endingRow][period] << "," << remain << endl;
@@ -1062,6 +1065,110 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
     return endingRow + 1;
 }
 
+vector< string > find_test_interval(char interval, int totalDays) {
+    vector< string > testInterval;
+    int testStartRow = 0;
+    for (int i = 0; i < totalDays; i++) {
+        if (_days_table[i].substr(0, 4) == _test_start_y) {
+            testStartRow = i;
+            break;
+        }
+    }
+    string month[] = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
+    testInterval.push_back(_days_table[testStartRow]);
+    int findPeriodEnd = 1;  //表示現在要記錄開始日期還是結束日期
+    switch (interval) {
+        case 'Y': {
+            int nextPeriodStartRow = testStartRow;
+            for (; nextPeriodStartRow < totalDays;) {
+                if (findPeriodEnd == 1) {
+                    string periodEndDate = _days_table[nextPeriodStartRow].substr(0, 4);
+                    for (; nextPeriodStartRow < totalDays; nextPeriodStartRow++) {
+                        if (_days_table[nextPeriodStartRow].substr(0, 4) != periodEndDate) {
+                            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+                            findPeriodEnd = 0;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    testInterval.push_back(_days_table[nextPeriodStartRow]);
+                    findPeriodEnd = 1;
+                }
+            }
+            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+            break;
+        }
+        case 'H': {
+            int nextPeriodStartIndex = 6;
+            int nextPeriodStartRow = testStartRow;
+            for (; nextPeriodStartRow < totalDays;) {
+                if (findPeriodEnd == 1) {
+                    for (; nextPeriodStartRow < totalDays; nextPeriodStartRow++) {
+                        if (_days_table[nextPeriodStartRow].substr(5, 2) == month[nextPeriodStartIndex]) {
+                            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+                            findPeriodEnd = 0;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    testInterval.push_back(_days_table[nextPeriodStartRow]);
+                    nextPeriodStartIndex = (nextPeriodStartIndex + 6) % 12;
+                    findPeriodEnd = 1;
+                }
+            }
+            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+            break;
+        }
+        case 'Q': {
+            int nextPeriodStartIndex = 3;
+            int nextPeriodStartRow = testStartRow;
+            for (; nextPeriodStartRow < totalDays;) {
+                if (findPeriodEnd == 1) {
+                    for (; nextPeriodStartRow < totalDays; nextPeriodStartRow++) {
+                        if (_days_table[nextPeriodStartRow].substr(5, 2) == month[nextPeriodStartIndex]) {
+                            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+                            findPeriodEnd = 0;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    testInterval.push_back(_days_table[nextPeriodStartRow]);
+                    nextPeriodStartIndex = (nextPeriodStartIndex + 3) % 12;
+                    findPeriodEnd = 1;
+                }
+            }
+            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+            break;
+        }
+        case 'M': {
+            int nextPeriodStartIndex = 1;
+            int nextPeriodStartRow = testStartRow;
+            for (; nextPeriodStartRow < totalDays;) {
+                if (findPeriodEnd == 1) {
+                    for (; nextPeriodStartRow < totalDays; nextPeriodStartRow++) {
+                        if (_days_table[nextPeriodStartRow].substr(5, 2) == month[nextPeriodStartIndex]) {
+                            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+                            findPeriodEnd = 0;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    testInterval.push_back(_days_table[nextPeriodStartRow]);
+                    nextPeriodStartIndex = (nextPeriodStartIndex + 1) % 12;
+                    findPeriodEnd = 1;
+                }
+            }
+            testInterval.push_back(_days_table[nextPeriodStartRow - 1]);
+            break;
+        }
+    }
+    return testInterval;
+}
+
 void start_test() {
     vector< string > company = get_file(_output_path);  //get companies name
     /* for (int i = 0; i < company.size(); i++) {
@@ -1069,16 +1176,23 @@ void start_test() {
     } */
     int companyNum = company.size();
     vector< string > RSI_table = get_file(_RSI_table_path);  //get RSI table
-    for (int whichCompany = 0; whichCompany < 1; whichCompany++) {
+    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         cout << "===========================" + company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]) - 1;  //No A2A
-        for (int windowUse = 1; windowUse < 2; windowUse++) {
+        for (int windowUse = 1; windowUse < 14; windowUse++) {
             cout << company[whichCompany] + ":" + _sliding_windows[windowUse] << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
             // for (int i = 0; i < strategy.size(); i++) {
             //     cout << strategy[i] << endl;
             // }
+            vector< string > testInterval;
+            if (_sliding_windows[windowUse].length() == 3) {
+                testInterval = find_test_interval(_sliding_windows[windowUse][2], totalDays);
+            }
+            else {
+                testInterval = find_test_interval(_sliding_windows[windowUse][0], totalDays);
+            }
             string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
             int strategyNum = strategy.size();
             for (int strategyUse = 0, lastTestStartRow = 0; strategyUse < strategyNum; strategyUse++) {
@@ -1088,18 +1202,20 @@ void start_test() {
                 int period = stod(strategyRead[9][1]);
                 int buySignal = stod(strategyRead[10][1]);
                 int sellSignal = stod(strategyRead[11][1]);
-                string startingDate;
-                string endingDate;
-                if (strategyUse < strategyNum - 1) {
-                    startingDate = strategy[strategyUse + 1].substr(0, 10);  //test period starting date
-                    endingDate = strategy[strategyUse + 1].substr(11, 10);  //test period ending date
+                // cout << testInterval[strategyUse * 2] + "~" + testInterval[strategyUse * 2 + 1] << endl;
+                cal_test_RoR(testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, outputPath);
+                /* string testStartDate;
+                string testEndDate;
+                if (strategyUse < strategyNum - 1 && strategyUse == 0) {
+                    testStartDate = strategy[strategyUse + 1].substr(0, 10);  //test period starting date
+                    testEndDate = strategy[strategyUse + 1].substr(11, 10);  //test period ending date
                 }
                 else {
-                    startingDate = _days_table[lastTestStartRow];
-                    endingDate = _days_table[totalDays - 1];
+                    testStartDate = _days_table[lastTestStartRow];
+                    testEndDate = _days_table[totalDays - 1];
                 }
-                cout << startingDate + "~" + endingDate << endl;
-                lastTestStartRow = cal_test_RoR(startingDate, endingDate, period, buySignal, sellSignal, totalDays, outputPath);
+                cout << testStartDate + "~" + testEndDate << endl;
+                lastTestStartRow = cal_test_RoR(testStartDate, testEndDate, period, buySignal, sellSignal, totalDays, outputPath); */
             }
         }
         delete[] _days_table;
