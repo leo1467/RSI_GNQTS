@@ -4,7 +4,7 @@
 //
 //
 // #include <dirent.h>
-#include <sys/stat.h>
+// #include <sys/stat.h>
 
 #include <algorithm>
 #include <cmath>
@@ -242,7 +242,7 @@ void partical_compare_rand(ofstream& debug) {
         for (int j = 0; j < 8; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.period[j]) {
+            if (r <= prob_matrix.period[j]) {
                 partical[i].period_bi[j] = 1;
             }
             else {
@@ -253,7 +253,7 @@ void partical_compare_rand(ofstream& debug) {
         for (int j = 0; j < 7; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.buying_signal[j]) {
+            if (r <= prob_matrix.buying_signal[j]) {
                 partical[i].buying_signal_bi[j] = 1;
             }
             else {
@@ -264,7 +264,7 @@ void partical_compare_rand(ofstream& debug) {
         for (int j = 0; j < 7; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
-            if (r < prob_matrix.selling_signal[j]) {
+            if (r <= prob_matrix.selling_signal[j]) {
                 partical[i].selling_signal_bi[j] = 1;
             }
             else {
@@ -744,10 +744,7 @@ void cal_RoR(int interval_index, ofstream& debug) {
         }
         debug << partical[partical_num].period_dec << "," << partical[partical_num].buying_signal_dec << "," << partical[partical_num].selling_signal_dec << "," << partical[partical_num].RoR << endl;
     }
-
-    if (Lbest.RoR != 0) {
-        global_update(debug);
-    }
+    global_update(debug);
 }
 
 void cal(int interval_index, ofstream& debug) {
