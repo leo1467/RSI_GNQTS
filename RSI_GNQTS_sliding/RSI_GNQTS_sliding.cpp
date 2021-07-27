@@ -3,7 +3,7 @@
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
 
@@ -37,12 +37,12 @@ string _test_start_y = to_string(stoi(_starting_date.substr(0, 4)) + 1);
 string _test_start_m = _starting_date.substr(5, 2);
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
-string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
-string _price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
-string _output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
-// string _RSI_table_path = "D:/stock_info/all_RSI_table";
-// string _price_path = "D:/stock_info/all_price";
-// string _output_path = "D:/stock_info/all_sw";
+// string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
+// string _price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
+// string _output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
+string _RSI_table_path = "D:/stock_info/all_RSI_table";
+string _price_path = "D:/stock_info/all_price";
+string _output_path = "D:/stock_info/all_sw";
 
 string* _days_table;  //記錄開始日期到結束日期
 double** _RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
@@ -60,49 +60,49 @@ struct partical {
     int buying_signal_bi[7];  //oversold
     int selling_signal_bi[7];  //overbought
     int period_dec;
-    int buying_signal_dec;  //oversold
-    int selling_signal_dec;  //overbought
+    double buying_signal_dec;  //oversold
+    double selling_signal_dec;  //overbought
     double RoR;
     double final_cp_lv;
     int trading_times;
 } partical[PARTICAL_AMOUNT], the_best, Gbest, Gworst, Lbest, Lworst;
 
-void create_folder(string company, string slide_folder) {
-    string s;
-    if (slide_folder == "company") {
-        for (int i = 0; i < 4; i++) {
-            company.pop_back();
-        }
-        s = _output_path + "/" + company;
-    }
-    else if (slide_folder == "train" || slide_folder == "test") {
-        s = _output_path + "/" + company + "/" + slide_folder;
-    }
-    else {
-        s = _output_path + "/" + company + "/train/" + slide_folder;
-        struct stat info;
-        if (stat(s.c_str(), &info) != 0) {
-            cout << "cannot access " << s << endl;
-            if (mkdir(s.c_str(), 0777) == -1) {
-                cerr << "Error : " << strerror(errno) << endl;
-            }
-            else {
-                cout << "Directory created" << endl;
-            }
-        }
-        s = _output_path + "/" + company + "/test/" + slide_folder;
-    }
-    struct stat info;
-    if (stat(s.c_str(), &info) != 0) {
-        cout << "cannot access " << s << endl;
-        if (mkdir(s.c_str(), 0777) == -1) {
-            cerr << "Error : " << strerror(errno) << endl;
-        }
-        else {
-            cout << "Directory created" << endl;
-        }
-    }
-}
+// void create_folder(string company, string slide_folder) {
+//     string s;
+//     if (slide_folder == "company") {
+//         for (int i = 0; i < 4; i++) {
+//             company.pop_back();
+//         }
+//         s = _output_path + "/" + company;
+//     }
+//     else if (slide_folder == "train" || slide_folder == "test") {
+//         s = _output_path + "/" + company + "/" + slide_folder;
+//     }
+//     else {
+//         s = _output_path + "/" + company + "/train/" + slide_folder;
+//         struct stat info;
+//         if (stat(s.c_str(), &info) != 0) {
+//             cout << "cannot access " << s << endl;
+//             if (mkdir(s.c_str(), 0777) == -1) {
+//                 cerr << "Error : " << strerror(errno) << endl;
+//             }
+//             else {
+//                 cout << "Directory created" << endl;
+//             }
+//         }
+//         s = _output_path + "/" + company + "/test/" + slide_folder;
+//     }
+//     struct stat info;
+//     if (stat(s.c_str(), &info) != 0) {
+//         cout << "cannot access " << s << endl;
+//         if (mkdir(s.c_str(), 0777) == -1) {
+//             cerr << "Error : " << strerror(errno) << endl;
+//         }
+//         else {
+//             cout << "Directory created" << endl;
+//         }
+//     }
+// }
 
 vector< vector< string > > read_data(string filename) {
     // cout << filename << endl;
@@ -827,19 +827,19 @@ void output(int interval_index, int slide, string company, int earlestExp, int e
     data << endl;
     data << fixed << setprecision(0) << "Initial capital," << TOTAL_CP_LV << endl;
     if (the_best.RoR == 0) {
-        data << fixed << setprecision(2) << "Final capital," << TOTAL_CP_LV << endl;
-        data << fixed << setprecision(2) << "Final return,0" << endl;
+        data << "Final capital," << TOTAL_CP_LV << endl;
+        data << "Final return,0" << endl;
     }
     else {
-        data << fixed << setprecision(2) << "Final capital," << the_best.final_cp_lv << endl;
-        data << fixed << setprecision(2) << "Final return," << the_best.final_cp_lv - TOTAL_CP_LV << endl;
+        data << "Final capital," << the_best.final_cp_lv << endl;
+        data << "Final return," << the_best.final_cp_lv - TOTAL_CP_LV << endl;
     }
     data << endl;
     data << "Period," << the_best.period_dec << endl;
-    data << "Buying signal," << the_best.buying_signal_dec << endl;
-    data << "Selling signal," << the_best.selling_signal_dec << endl;
+    data << "Buying signal," << fixed << setprecision(10) << the_best.buying_signal_dec << endl;
+    data << "Selling signal," << fixed << setprecision(10) << the_best.selling_signal_dec << endl;
     data << "Trading times," << the_best.trading_times << endl;
-    data << fixed << setprecision(2) << "Rate of return," << the_best.RoR << "%" << endl;
+    data << "Rate of return," << fixed << setprecision(10) << the_best.RoR << "%" << endl;
     data << endl;
     data << "first best exp," << earlestExp << endl;
     data << "first best gen," << earlestGen << endl;
@@ -892,22 +892,22 @@ void start_train() {
     // debug.open("debug.csv");
     vector< string > RSI_file = get_file(_RSI_table_path);  //get RSI table
     vector< string > stock_file = get_stock_file();  //get stock price
-    for (int i = 0; i < stock_file.size(); i++) {  //create company folder
-        create_folder(stock_file[i], "company");
-    }
+    // for (int i = 0; i < stock_file.size(); i++) {  //create company folder
+    //     create_folder(stock_file[i], "company");
+    // }
     vector< string > company = get_folder();
     int companyNum = company.size();
-    for (int i = 0; i < companyNum; i++) {  //create train and test folder
-        create_folder(company[i], "train");
-        create_folder(company[i], "test");
-    }
-    for (int i = 0; i < companyNum; i++) {  //create windowUse folder
-        cout << company[i] << endl;
-        for (int j = 0; j < sizeof(_sliding_windows) / sizeof(_sliding_windows[0]); j++) {
-            create_folder(company[i], _sliding_windows[j]);
-        }
-    }
-    for (int company_index = 0; company_index < companyNum; company_index++) {
+    // for (int i = 0; i < companyNum; i++) {  //create train and test folder
+    //     create_folder(company[i], "train");
+    //     create_folder(company[i], "test");
+    // }
+    // for (int i = 0; i < companyNum; i++) {  //create windowUse folder
+    //     cout << company[i] << endl;
+    //     for (int j = 0; j < sizeof(_sliding_windows) / sizeof(_sliding_windows[0]); j++) {
+    //         create_folder(company[i], _sliding_windows[j]);
+    //     }
+    // }
+    for (int company_index = 0; company_index < 1; company_index++) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
@@ -948,7 +948,7 @@ void start_train() {
     // debug.close();
 }
 
-void output_test_file(string outputPath, string startDate, string endDate, int period, int buySignal, int sellSignal, int tradeNum, double returnRate, vector< vector< string > > tradeReord) {
+void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< vector< string > > tradeReord) {
     ofstream test;
     test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
     test << "generation," << _generation << endl;
@@ -956,21 +956,21 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test << "delta," << _delta << endl;
     test << "EXP times," << _exp_times << endl;
     test << endl;
-    test << fixed << setprecision(0) << "Initial capital," << TOTAL_CP_LV << endl;
+    test << "Initial capital," << TOTAL_CP_LV << endl;
     if (returnRate == 0) {
-        test << fixed << setprecision(2) << "Final capital," << TOTAL_CP_LV << endl;
-        test << fixed << setprecision(2) << "Final return,0" << endl;
+        test << "Final capital," << TOTAL_CP_LV << endl;
+        test << "Final return,0" << endl;
     }
     else {
-        test << fixed << setprecision(2) << "Final capital," << TOTAL_CP_LV * (returnRate + 1) << endl;
-        test << fixed << setprecision(2) << "Final return," << TOTAL_CP_LV * returnRate << endl;
+        test << "Final capital," << TOTAL_CP_LV * (returnRate + 1) << endl;
+        test << "Final return," << TOTAL_CP_LV * returnRate << endl;
     }
     test << endl;
     test << "Period," << period << endl;
-    test << "Buying signal," << buySignal << endl;
-    test << "Selling signal," << sellSignal << endl;
+    test << "Buying signal," << fixed << setprecision(10) << buySignal << endl;
+    test << "Selling signal," << fixed << setprecision(10) << sellSignal << endl;
     test << "Trading times," << tradeNum << endl;
-    test << fixed << setprecision(2) << "Rate of return," << returnRate * 100 << "%" << endl;
+    test << "Rate of return," << fixed << setprecision(10) << returnRate * 100 << "%" << endl;
     test << endl;
     test << "first best exp," << endl;
     test << "first best gen," << endl;
@@ -1059,7 +1059,13 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
         // cout << "sell: " << _days_table[endingRow] << "," << _price_table[endingRow] << "," << _RSI_table[endingRow][period] << "," << remain << endl;
         // cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
     }
-    double returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
+    double returnRate;
+    if (sellNum != 0) {
+        returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
+    }
+    else {
+        returnRate = 0;
+    }
     // cout << "trading times: " << sellNum << endl;
     output_test_file(outputPath, startingDate, endingDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
     return endingRow + 1;
@@ -1176,7 +1182,7 @@ void start_test() {
     } */
     int companyNum = company.size();
     vector< string > RSI_table = get_file(_RSI_table_path);  //get RSI table
-    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+    for (int whichCompany = 0; whichCompany < 1; whichCompany++) {
         cout << "===========================" + company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]) - 1;  //No A2A
