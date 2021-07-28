@@ -25,7 +25,7 @@ using namespace std;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 1  //0:train, 1:test
+#define MODE 0  //0:train, 1:test
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -676,7 +676,7 @@ void find_sliding_start_end(int table_size, string windowUse, int sliding_type_i
                 interval_table.push_back(i - 1);
                 start = M[(train_s_M += skip) % 12];
                 end = M[(train_e_M += skip) % 12];
-                i -= e_jump_s * 22;
+                i -= e_jump_s * 24;
                 if (i < 0) {
                     i = 0;
                 }
