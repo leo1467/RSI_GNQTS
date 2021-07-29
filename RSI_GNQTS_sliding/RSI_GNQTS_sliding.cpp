@@ -430,44 +430,46 @@ void update_global(/*ofstream& debug*/) {
     // }
     // debug << Lworst.period_dec << "," << Lworst.buying_signal_dec << "," << Lworst.selling_signal_dec << "," << Lworst.RoR << endl;
     //===============================================================================
-    for (int i = 0; i < 8; i++) {
-        if (Gbest.period_bi[i] == 1 && Lworst.period_bi[i] == 0 && prob_matrix.period[i] < 0.5) {
-            prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
+    if (Gbest.RoR != 0) {
+        for (int i = 0; i < 8; i++) {
+            if (Gbest.period_bi[i] == 1 && Lworst.period_bi[i] == 0 && prob_matrix.period[i] < 0.5) {
+                prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
+            }
+            if (Gbest.period_bi[i] == 0 && Lworst.period_bi[i] == 1 && prob_matrix.period[i] > 0.5) {
+                prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
+            }
+            if (Gbest.period_bi[i] == 1) {
+                prob_matrix.period[i] += _delta;
+            }
+            if (Lworst.period_bi[i] == 1) {
+                prob_matrix.period[i] -= _delta;
+            }
         }
-        if (Gbest.period_bi[i] == 0 && Lworst.period_bi[i] == 1 && prob_matrix.period[i] > 0.5) {
-            prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
-        }
-        if (Gbest.period_bi[i] == 1) {
-            prob_matrix.period[i] += _delta;
-        }
-        if (Lworst.period_bi[i] == 1) {
-            prob_matrix.period[i] -= _delta;
-        }
-    }
-    for (int i = 0; i < 7; i++) {
-        if (Gbest.buying_signal_bi[i] == 1 && Lworst.buying_signal_bi[i] == 0 && prob_matrix.buying_signal[i] < 0.5) {
-            prob_matrix.buying_signal[i] = 1.0 - prob_matrix.buying_signal[i];
-        }
-        if (Gbest.buying_signal_bi[i] == 0 && Lworst.buying_signal_bi[i] == 1 && prob_matrix.buying_signal[i] > 0.5) {
-            prob_matrix.buying_signal[i] = 1.0 - prob_matrix.buying_signal[i];
-        }
-        if (Gbest.selling_signal_bi[i] == 1 && Lworst.selling_signal_bi[i] == 0 && prob_matrix.selling_signal[i] < 0.5) {
-            prob_matrix.selling_signal[i] = 1.0 - prob_matrix.selling_signal[i];
-        }
-        if (Gbest.selling_signal_bi[i] == 0 && Lworst.selling_signal_bi[i] == 1 && prob_matrix.selling_signal[i] > 0.5) {
-            prob_matrix.selling_signal[i] = 1.0 - prob_matrix.selling_signal[i];
-        }
-        if (Gbest.buying_signal_bi[i] == 1) {
-            prob_matrix.buying_signal[i] += _delta;
-        }
-        if (Gbest.selling_signal_bi[i] == 1) {
-            prob_matrix.selling_signal[i] += _delta;
-        }
-        if (Lworst.buying_signal_bi[i] == 1) {
-            prob_matrix.buying_signal[i] -= _delta;
-        }
-        if (Lworst.selling_signal_bi[i] == 1) {
-            prob_matrix.selling_signal[i] -= _delta;
+        for (int i = 0; i < 7; i++) {
+            if (Gbest.buying_signal_bi[i] == 1 && Lworst.buying_signal_bi[i] == 0 && prob_matrix.buying_signal[i] < 0.5) {
+                prob_matrix.buying_signal[i] = 1.0 - prob_matrix.buying_signal[i];
+            }
+            if (Gbest.buying_signal_bi[i] == 0 && Lworst.buying_signal_bi[i] == 1 && prob_matrix.buying_signal[i] > 0.5) {
+                prob_matrix.buying_signal[i] = 1.0 - prob_matrix.buying_signal[i];
+            }
+            if (Gbest.selling_signal_bi[i] == 1 && Lworst.selling_signal_bi[i] == 0 && prob_matrix.selling_signal[i] < 0.5) {
+                prob_matrix.selling_signal[i] = 1.0 - prob_matrix.selling_signal[i];
+            }
+            if (Gbest.selling_signal_bi[i] == 0 && Lworst.selling_signal_bi[i] == 1 && prob_matrix.selling_signal[i] > 0.5) {
+                prob_matrix.selling_signal[i] = 1.0 - prob_matrix.selling_signal[i];
+            }
+            if (Gbest.buying_signal_bi[i] == 1) {
+                prob_matrix.buying_signal[i] += _delta;
+            }
+            if (Gbest.selling_signal_bi[i] == 1) {
+                prob_matrix.selling_signal[i] += _delta;
+            }
+            if (Lworst.buying_signal_bi[i] == 1) {
+                prob_matrix.buying_signal[i] -= _delta;
+            }
+            if (Lworst.selling_signal_bi[i] == 1) {
+                prob_matrix.selling_signal[i] -= _delta;
+            }
         }
     }
     //===============================================================================
@@ -988,17 +990,17 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test.close();
 }
 
-int cal_test_RoR(string startingDate, string endingDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath) {
+int cal_test_RoR(string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath) {
     int startingRow = 0;
     for (int i = 0; i < totalDays; i++) {
-        if (_days_table[i] == startingDate) {
+        if (_days_table[i] == startDate) {
             startingRow = i;
             break;
         }
     }
     int endingRow = 0;
     for (int i = startingRow; i < totalDays; i++) {
-        if (_days_table[i] == endingDate) {
+        if (_days_table[i] == endDate) {
             endingRow = i;
             break;
         }
@@ -1006,68 +1008,72 @@ int cal_test_RoR(string startingDate, string endingDate, int period, int buySign
     // cout << _days_table[startingRow] << endl;
     // cout << _days_table[endingRow] << endl;
 
-    int stockHeld = 0;
-    double remain = 0;
+    int stockHold = 0;
+    double remain = TOTAL_CP_LV;
     int flag = 0;  //記錄手上有錢還是有股票
     int sellNum = 0;
     int buyNum = 0;
     // for (int i = startingRow; i <= endingRow - period + 1; i++) { why endingRow - period + 1===============
     vector< vector< string > > tradeRecord;
     vector< string > oneTradeRecord;
-    for (int i = startingRow; i < endingRow; i++) {
-        // string tmp;
-        if (_RSI_table[i][period] <= buySignal && stockHeld == 0) {  //買入訊號出現且無持股
-            if (flag == 0) {  //等待第一次RSI小於low_bound
-                buyNum++;
-                stockHeld = TOTAL_CP_LV / _price_table[i];
-                remain = TOTAL_CP_LV - _price_table[i] * stockHeld;
+    if (period != 0) {
+        for (int i = startingRow; i <= endingRow; i++) {
+            // string tmp;
+            if (_RSI_table[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
+                // if (flag == 0) {  //等待第一次RSI小於low_bound
+                //     buyNum++;
+                //     stockHold = TOTAL_CP_LV / _price_table[i];
+                //     remain = TOTAL_CP_LV - _price_table[i] * stockHold;
+                //     flag = 1;
+                //     oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                //     // tmp = "buy " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
+                //     // cout << "buy: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
+                // }
+                // else {
                 flag = 1;
-                oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHeld));
-                // tmp = "buy " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
-                // cout << "buy: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
-            }
-            else {
                 buyNum++;
-                stockHeld = remain / _price_table[i];
-                remain -= (double)stockHeld * _price_table[i];
-                oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHeld));
+                stockHold = remain / _price_table[i];
+                remain -= (double)stockHold * _price_table[i];
+                oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
                 // tmp = "buy " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
                 // cout << "buy: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
+                // }
+                // oneTradeRecord.push_back(tmp);
+                tradeRecord.push_back(oneTradeRecord);
+                oneTradeRecord.clear();
             }
-            // oneTradeRecord.push_back(tmp);
-            tradeRecord.push_back(oneTradeRecord);
-            oneTradeRecord.clear();
-        }
-        else if (_RSI_table[i][period] >= sellSignal && stockHeld != 0) {  //賣出訊號出現且有持股
-            sellNum++;
-            remain += (double)stockHeld * _price_table[i];
-            stockHeld = 0;
-            oneTradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHeld));
-            tradeRecord.push_back(oneTradeRecord);
-            oneTradeRecord.clear();
-            // tmp = "sell " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
-            // oneTradeRecord.push_back(tmp);
-            // cout << "sell: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
+            else if (_RSI_table[i][period] >= sellSignal && stockHold != 0) {  //賣出訊號出現且有持股
+                sellNum++;
+                remain += (double)stockHold * _price_table[i];
+                stockHold = 0;
+                oneTradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                tradeRecord.push_back(oneTradeRecord);
+                oneTradeRecord.clear();
+                // tmp = "sell " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
+                // oneTradeRecord.push_back(tmp);
+                // cout << "sell: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
+            }
         }
     }
-    if (stockHeld != 0) {
+    if (stockHold != 0) {
         sellNum++;
-        remain += stockHeld * _price_table[endingRow];
-        stockHeld = 0;
-        oneTradeRecord.push_back("sell," + _days_table[endingRow] + "," + to_string(_price_table[endingRow]) + "," + to_string(_RSI_table[endingRow][period]) + "," + to_string(stockHeld) + "," + to_string(remain) + "," + to_string(remain + _price_table[endingRow] * stockHeld));
+        remain += stockHold * _price_table[endingRow];
+        stockHold = 0;
+        oneTradeRecord.push_back("sell," + _days_table[endingRow] + "," + to_string(_price_table[endingRow]) + "," + to_string(_RSI_table[endingRow][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[endingRow] * stockHold));
         tradeRecord.push_back(oneTradeRecord);
         // cout << "sell: " << _days_table[endingRow] << "," << _price_table[endingRow] << "," << _RSI_table[endingRow][period] << "," << remain << endl;
         // cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
     }
-    double returnRate;
-    if (sellNum != 0) {
-        returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
-    }
-    else {
+    double returnRate = 0;
+    if (flag == 0) {
         returnRate = 0;
     }
+    else {
+        returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
+    }
+    // cout << returnRate * 100 << endl;
     // cout << "trading times: " << sellNum << endl;
-    output_test_file(outputPath, startingDate, endingDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
+    output_test_file(outputPath, startDate, endDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
     return endingRow + 1;
 }
 
@@ -1186,22 +1192,22 @@ void start_test() {
         cout << "===========================" + company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]) - 1;  //No A2A
-        for (int windowUse = 1; windowUse < 14; windowUse++) {
+        for (int windowUse = 1; windowUse < windowNum; windowUse++) {  //No A2A
             cout << company[whichCompany] + ":" + _sliding_windows[windowUse] << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
             // for (int i = 0; i < strategy.size(); i++) {
             //     cout << strategy[i] << endl;
             // }
             vector< string > testInterval;
-            if (_sliding_windows[windowUse].length() == 3) {
+            if (_sliding_windows[windowUse].length() == 3) {  //一般測試期區間
                 testInterval = find_test_interval(_sliding_windows[windowUse][2], totalDays);
             }
-            else {
+            else {  //年對年
                 testInterval = find_test_interval(_sliding_windows[windowUse][0], totalDays);
             }
             string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
             int strategyNum = strategy.size();
-            for (int strategyUse = 0, lastTestStartRow = 0; strategyUse < strategyNum; strategyUse++) {
+            for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
                 string strategyPath = _output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse] + "/" + strategy[strategyUse];
                 // cout << strategyPath << endl;
                 vector< vector< string > > strategyRead = read_data(strategyPath);
@@ -1210,18 +1216,6 @@ void start_test() {
                 int sellSignal = stod(strategyRead[11][1]);
                 // cout << testInterval[strategyUse * 2] + "~" + testInterval[strategyUse * 2 + 1] << endl;
                 cal_test_RoR(testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, outputPath);
-                /* string testStartDate;
-                string testEndDate;
-                if (strategyUse < strategyNum - 1 && strategyUse == 0) {
-                    testStartDate = strategy[strategyUse + 1].substr(0, 10);  //test period starting date
-                    testEndDate = strategy[strategyUse + 1].substr(11, 10);  //test period ending date
-                }
-                else {
-                    testStartDate = _days_table[lastTestStartRow];
-                    testEndDate = _days_table[totalDays - 1];
-                }
-                cout << testStartDate + "~" + testEndDate << endl;
-                lastTestStartRow = cal_test_RoR(testStartDate, testEndDate, period, buySignal, sellSignal, totalDays, outputPath); */
             }
         }
         delete[] _days_table;
