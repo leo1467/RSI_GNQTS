@@ -25,7 +25,7 @@ using namespace std;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 1  //0:train, 1:test
+#define MODE 2  //0:train, 1:test, 2:IRR
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -35,6 +35,7 @@ string _starting_date = "2010-01-04";
 string _ending_date = "2020-12-31";
 string _test_start_y = to_string(stoi(_starting_date.substr(0, 4)) + 1);
 string _test_start_m = _starting_date.substr(5, 2);
+int _test_length = stoi(_ending_date.substr(0, 4)) - stoi(_starting_date.substr(0, 4));
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
 // string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
@@ -545,7 +546,7 @@ int find_train_start(int test_s_row, string mon, int& train_start_row, string& s
     return to_jump;
 }
 
-void find_sliding_start_end(int table_size, string windowUse, int sliding_type_int) {
+void find_window_start_end(int table_size, string windowUse, int sliding_type_int) {
     string M[] = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
     int test_s_row = 0;  //記錄測試期開始row
     for (int i = 230; i < 300; i++) {  //找出測試期開始的row
@@ -701,7 +702,7 @@ void find_interval(int table_size, int slide) {  //將A2A跟其他分開
         interval_table.push_back(table_size - 1);
     }
     else {  //開始找普通滑動視窗的起始與結束
-        find_sliding_start_end(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size());
+        find_window_start_end(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size());
     }
     for (int i = 0; i < interval_table.size(); i += 2) {
         cout << _days_table[interval_table[i]] + "~" + _days_table[interval_table[i + 1]] << endl;
@@ -1221,6 +1222,37 @@ void start_test() {
     }
 }
 
+void cal_IRR() {
+    vector< string > company = get_file(_output_path);  //公司名稱
+    int companyNum = company.size();
+    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        ofstream out;
+        out.open(company[whichCompany] + ".csv");
+        vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
+        int windowNum = window.size();
+        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
+            double TotalRate = 0;
+            out << "====================" + window[whichWindow] + "====================" << endl;
+            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
+            int strategyNum = strategy.size();
+            for (int strategys = 0; strategys < strategyNum; strategys++) {
+                vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
+                out << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
+                if (strategys == 0) {
+                    TotalRate = stod(file[13][1]) / 100 + 1;
+                }
+                else {
+                    TotalRate = TotalRate * (stod(file[13][1]) / 100 + 1);
+                }
+            }
+            double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
+            TotalRate--;
+            out << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+        }
+        out.close();
+    }
+}
+
 int main(void) {
     switch (MODE) {
         case 0:
@@ -1228,6 +1260,9 @@ int main(void) {
             break;
         case 1:
             start_test();
+            break;
+        case 2:
+            cal_IRR();
             break;
         default:
             cout << "Wrong MODE" << endl;
