@@ -25,7 +25,7 @@ using namespace std;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 0  //0:train, 1:test
+#define MODE 1  //0:train, 1:test
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -950,7 +950,7 @@ void start_train() {
     // debug.close();
 }
 
-void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< vector< string > > tradeReord) {
+void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
     test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
     test << "generation," << _generation << endl;
@@ -980,17 +980,17 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test << endl;
     test << "Trading record,Date,Price,RSI,Stock held,Remain,Capital Lv" << endl;
     for (int i = 0; i < tradeReord.size(); i++) {
-        for (int j = 0; j < tradeReord[i].size(); j++) {
-            test << tradeReord[i][j] << endl;
-        }
-        if (i % 2 == 1) {
-            test << endl;
-        }
+        // for (int j = 0; j < tradeReord[i].size(); j++) {
+        test << tradeReord[i] << endl;
+        // }
+        // if (i % 2 == 1) {
+        //     test << endl;
+        // }
     }
     test.close();
 }
 
-int cal_test_RoR(string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath) {
+void cal_test_RoR(string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath) {
     int startingRow = 0;
     for (int i = 0; i < totalDays; i++) {
         if (_days_table[i] == startDate) {
@@ -1010,15 +1010,16 @@ int cal_test_RoR(string startDate, string endDate, int period, int buySignal, in
 
     int stockHold = 0;
     double remain = TOTAL_CP_LV;
-    int flag = 0;  //記錄手上有錢還是有股票
+    // int flag = 0;  //記錄手上有錢還是有股票
     int sellNum = 0;
     int buyNum = 0;
-    // for (int i = startingRow; i <= endingRow - period + 1; i++) { why endingRow - period + 1===============
-    vector< vector< string > > tradeRecord;
-    vector< string > oneTradeRecord;
+    double returnRate = 0;
+    // vector< vector< string > > tradeRecord;
+    vector< string > tradeRecord;
+
     if (period != 0) {
         for (int i = startingRow; i <= endingRow; i++) {
-            // string tmp;
+            // vector< string > oneTradeRecord;
             if (_RSI_table[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
                 // if (flag == 0) {  //等待第一次RSI小於low_bound
                 //     buyNum++;
@@ -1030,51 +1031,44 @@ int cal_test_RoR(string startDate, string endDate, int period, int buySignal, in
                 //     // cout << "buy: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
                 // }
                 // else {
-                flag = 1;
+                // flag = 1;
                 buyNum++;
                 stockHold = remain / _price_table[i];
                 remain -= (double)stockHold * _price_table[i];
-                oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                // oneTradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
                 // tmp = "buy " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
                 // cout << "buy: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
                 // }
                 // oneTradeRecord.push_back(tmp);
-                tradeRecord.push_back(oneTradeRecord);
-                oneTradeRecord.clear();
+                tradeRecord.push_back("buy," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                // oneTradeRecord.clear();
             }
-            else if (_RSI_table[i][period] >= sellSignal && stockHold != 0) {  //賣出訊號出現且有持股
+            else if ((_RSI_table[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow)) {  //賣出訊號出現且有持股
                 sellNum++;
                 remain += (double)stockHold * _price_table[i];
                 stockHold = 0;
-                oneTradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
-                tradeRecord.push_back(oneTradeRecord);
-                oneTradeRecord.clear();
+                // oneTradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                tradeRecord.push_back("sell," + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[i] * stockHold));
+                // oneTradeRecord.clear();
                 // tmp = "sell " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
                 // oneTradeRecord.push_back(tmp);
                 // cout << "sell: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
             }
         }
     }
-    if (stockHold != 0) {
-        sellNum++;
-        remain += stockHold * _price_table[endingRow];
-        stockHold = 0;
-        oneTradeRecord.push_back("sell," + _days_table[endingRow] + "," + to_string(_price_table[endingRow]) + "," + to_string(_RSI_table[endingRow][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[endingRow] * stockHold));
-        tradeRecord.push_back(oneTradeRecord);
-        // cout << "sell: " << _days_table[endingRow] << "," << _price_table[endingRow] << "," << _RSI_table[endingRow][period] << "," << remain << endl;
-        // cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
-    }
-    double returnRate = 0;
-    if (flag == 0) {
-        returnRate = 0;
-    }
-    else {
-        returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
-    }
+    //     sellNum++;
+    // if (stockHold != 0) {
+    //     remain += stockHold * _price_table[endingRow];
+    //     stockHold = 0;
+    //     oneTradeRecord.push_back("sell," + _days_table[endingRow] + "," + to_string(_price_table[endingRow]) + "," + to_string(_RSI_table[endingRow][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + _price_table[endingRow] * stockHold));
+    //     tradeRecord.push_back(oneTradeRecord);
+    //     // cout << "sell: " << _days_table[endingRow] << "," << _price_table[endingRow] << "," << _RSI_table[endingRow][period] << "," << remain << endl;
+    //     // cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
+    // }
+    returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
     // cout << returnRate * 100 << endl;
     // cout << "trading times: " << sellNum << endl;
     output_test_file(outputPath, startDate, endDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
-    return endingRow + 1;
 }
 
 vector< string > find_test_interval(char interval, int totalDays) {
