@@ -373,3 +373,4 @@ RSI_GNQTS_sliding.sln
 RSI_GNQTS_sliding/RSI_GNQTS_sliding.vcxproj
 RSI_GNQTS_sliding/RSI_GNQTS_sliding.vcxproj.filters
 .gitattributes
+RSI_GNQTS_sliding/dirent.h

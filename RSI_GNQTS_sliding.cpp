@@ -3,12 +3,13 @@
 //
 //
 //
-// #include <dirent.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -16,16 +17,17 @@
 #include <string>
 #include <vector>
 
-#include "dirent.h"
+// #include "dirent.h"
 
 using namespace std;
+using namespace filesystem;
 
 #define PARTICAL_AMOUNT 10
 #define START 2  //股價csv裡的開始欄位
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 2  //0:train, 1:test, 2:IRR
+#define MODE 3  //0:train, 1:test, 2:IRR
 
 double _delta = 0.003;
 int _exp_times = 50;
