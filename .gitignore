@@ -369,3 +369,7 @@ RSI_GNQTS_sliding/RSI_GNQTS_sliding.exe
 test.cpp
 *.exe
 test
+RSI_GNQTS_sliding.sln
+RSI_GNQTS_sliding/RSI_GNQTS_sliding.vcxproj
+RSI_GNQTS_sliding/RSI_GNQTS_sliding.vcxproj.filters
+.gitattributes
