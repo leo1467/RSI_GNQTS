@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <filesystem>
+// #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -20,14 +20,14 @@
 // #include "dirent.h"
 
 using namespace std;
-using namespace filesystem;
+// using namespace filesystem;
 
 #define PARTICAL_AMOUNT 10
 #define START 2  //股價csv裡的開始欄位
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 3  //0:train, 1:test, 2:IRR
+#define MODE 0  //0:train, 1:test, 2:IRR
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -43,9 +43,9 @@ string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2
 // string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
 // string _price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
 // string _output_path = "/Users/neo/Desktop/VScode/new training/RSI/all_sw";
-string _RSI_table_path = "D:/stock_info/all_RSI_table";
-string _price_path = "D:/stock_info/all_price";
-string _output_path = "D:/stock_info/all_sw";
+string _RSI_table_path = "RSI_table";
+string _price_path = "price";
+string _output_path = "result";
 
 string* _days_table;  //記錄開始日期到結束日期
 double** _RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
@@ -70,42 +70,42 @@ struct partical {
     int trading_times;
 } partical[PARTICAL_AMOUNT], the_best, Gbest, Gworst, Lbest, Lworst;
 
-// void create_folder(string company, string slide_folder) {
-//     string s;
-//     if (slide_folder == "company") {
-//         for (int i = 0; i < 4; i++) {
-//             company.pop_back();
-//         }
-//         s = _output_path + "/" + company;
-//     }
-//     else if (slide_folder == "train" || slide_folder == "test") {
-//         s = _output_path + "/" + company + "/" + slide_folder;
-//     }
-//     else {
-//         s = _output_path + "/" + company + "/train/" + slide_folder;
-//         struct stat info;
-//         if (stat(s.c_str(), &info) != 0) {
-//             cout << "cannot access " << s << endl;
-//             if (mkdir(s.c_str(), 0777) == -1) {
-//                 cerr << "Error : " << strerror(errno) << endl;
-//             }
-//             else {
-//                 cout << "Directory created" << endl;
-//             }
-//         }
-//         s = _output_path + "/" + company + "/test/" + slide_folder;
-//     }
-//     struct stat info;
-//     if (stat(s.c_str(), &info) != 0) {
-//         cout << "cannot access " << s << endl;
-//         if (mkdir(s.c_str(), 0777) == -1) {
-//             cerr << "Error : " << strerror(errno) << endl;
-//         }
-//         else {
-//             cout << "Directory created" << endl;
-//         }
-//     }
-// }
+void create_folder(string company, string slide_folder) {
+    string s;
+    if (slide_folder == "company") {
+        for (int i = 0; i < 4; i++) {
+            company.pop_back();
+        }
+        s = _output_path + "/" + company;
+    }
+    else if (slide_folder == "train" || slide_folder == "test") {
+        s = _output_path + "/" + company + "/" + slide_folder;
+    }
+    else {
+        s = _output_path + "/" + company + "/train/" + slide_folder;
+        struct stat info;
+        if (stat(s.c_str(), &info) != 0) {
+            cout << "cannot access " << s << endl;
+            if (mkdir(s.c_str(), 0777) == -1) {
+                cerr << "Error : " << strerror(errno) << endl;
+            }
+            else {
+                cout << "Directory created" << endl;
+            }
+        }
+        s = _output_path + "/" + company + "/test/" + slide_folder;
+    }
+    struct stat info;
+    if (stat(s.c_str(), &info) != 0) {
+        cout << "cannot access " << s << endl;
+        if (mkdir(s.c_str(), 0777) == -1) {
+            cerr << "Error : " << strerror(errno) << endl;
+        }
+        else {
+            cout << "Directory created" << endl;
+        }
+    }
+}
 
 vector< vector< string > > read_data(string filename) {
     // cout << filename << endl;
@@ -141,7 +141,7 @@ vector< string > get_file(string RSI_table_path) {
             continue;
         }
         file_name.push_back(ptr->d_name);
-        // cout << ptr->d_name << endl;
+        cout << ptr->d_name << endl;
     }
     closedir(dir);
     sort(file_name.begin(), file_name.end());
@@ -912,7 +912,7 @@ void start_train() {
     //         create_folder(company[i], _sliding_windows[j]);
     //     }
     // }
-    for (int company_index = 0; company_index < 1; company_index++) {
+    for (int company_index = 0; company_index < companyNum; company_index++) {
         cout << "===========================" << stock_file[company_index] << endl;
         int total_days = 0;
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
