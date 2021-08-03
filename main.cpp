@@ -3,13 +3,12 @@
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-// #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -17,27 +16,29 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
-// using namespace filesystem;
 
 #define PARTICAL_AMOUNT 10
 #define START 2  //股價csv裡的開始欄位
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 0  //0:train, 1:test, 2:IRR
+#define MODE 2  //0:train, 1:train_IRR, 2:test, 3:test_IRR 4:B&H
 
 double _delta = 0.003;
 int _exp_times = 50;
 int _generation = 1000;
 
-string _starting_date = "2010-01-04";
-string _ending_date = "2020-12-31";
-string _test_start_y = to_string(stoi(_starting_date.substr(0, 4)) + 1);
-string _test_start_m = _starting_date.substr(5, 2);
-int _test_length = stoi(_ending_date.substr(0, 4)) - stoi(_starting_date.substr(0, 4));
+string _train_start_date = "2010-01-04";
+string _train_end_date = "2020-12-31";
+string _test_start_y = to_string(stoi(_train_start_date.substr(0, 4)) + 1);
+string _test_start_m = _train_start_date.substr(5, 2);
+int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_train_start_date.substr(0, 4));
+string _company = "AAPL";
+string _BH_start_day = "2011";
+string _BH_end_day = "";
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
 // string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
@@ -70,42 +71,42 @@ struct partical {
     int trading_times;
 } partical[PARTICAL_AMOUNT], the_best, Gbest, Gworst, Lbest, Lworst;
 
-void create_folder(string company, string slide_folder) {
-    string s;
-    if (slide_folder == "company") {
-        for (int i = 0; i < 4; i++) {
-            company.pop_back();
-        }
-        s = _output_path + "/" + company;
-    }
-    else if (slide_folder == "train" || slide_folder == "test") {
-        s = _output_path + "/" + company + "/" + slide_folder;
-    }
-    else {
-        s = _output_path + "/" + company + "/train/" + slide_folder;
-        struct stat info;
-        if (stat(s.c_str(), &info) != 0) {
-            cout << "cannot access " << s << endl;
-            if (mkdir(s.c_str(), 0777) == -1) {
-                cerr << "Error : " << strerror(errno) << endl;
-            }
-            else {
-                cout << "Directory created" << endl;
-            }
-        }
-        s = _output_path + "/" + company + "/test/" + slide_folder;
-    }
-    struct stat info;
-    if (stat(s.c_str(), &info) != 0) {
-        cout << "cannot access " << s << endl;
-        if (mkdir(s.c_str(), 0777) == -1) {
-            cerr << "Error : " << strerror(errno) << endl;
-        }
-        else {
-            cout << "Directory created" << endl;
-        }
-    }
-}
+// void create_folder(string company, string slide_folder) {
+//     string s;
+//     if (slide_folder == "company") {
+//         for (int i = 0; i < 4; i++) {
+//             company.pop_back();
+//         }
+//         s = _output_path + "/" + company;
+//     }
+//     else if (slide_folder == "train" || slide_folder == "test") {
+//         s = _output_path + "/" + company + "/" + slide_folder;
+//     }
+//     else {
+//         s = _output_path + "/" + company + "/train/" + slide_folder;
+//         struct stat info;
+//         if (stat(s.c_str(), &info) != 0) {
+//             cout << "cannot access " << s << endl;
+//             if (mkdir(s.c_str(), 0777) == -1) {
+//                 cerr << "Error : " << strerror(errno) << endl;
+//             }
+//             else {
+//                 cout << "Directory created" << endl;
+//             }
+//         }
+//         s = _output_path + "/" + company + "/test/" + slide_folder;
+//     }
+//     struct stat info;
+//     if (stat(s.c_str(), &info) != 0) {
+//         cout << "cannot access " << s << endl;
+//         if (mkdir(s.c_str(), 0777) == -1) {
+//             cerr << "Error : " << strerror(errno) << endl;
+//         }
+//         else {
+//             cout << "Directory created" << endl;
+//         }
+//     }
+// }
 
 vector< vector< string > > read_data(string filename) {
     // cout << filename << endl;
@@ -141,7 +142,6 @@ vector< string > get_file(string RSI_table_path) {
             continue;
         }
         file_name.push_back(ptr->d_name);
-        cout << ptr->d_name << endl;
     }
     closedir(dir);
     sort(file_name.begin(), file_name.end());
@@ -561,7 +561,7 @@ void find_window_start_end(int table_size, string windowUse, int sliding_type_in
     int train_end_row = 0;  //記錄訓練期結束的row
     if (sliding_type_int == 2) {  //判斷year-on-year
         train_start_row = 0;
-        string train_end_y = to_string(stoi(_ending_date.substr(0, 4)) - 1);
+        string train_end_y = to_string(stoi(_train_end_date.substr(0, 4)) - 1);
         for (int i = table_size - 230; i > 0; i--) {
             if (_days_table[i].substr(0, 4) == train_end_y) {
                 train_end_row = i;
@@ -730,10 +730,10 @@ int store_RSI_and_price(string RSI_table_path, string stock_file_path, int slide
     int startingRow = 0;
     int ending_row = 0;
     for (int i = 0; i < price_size; i++) {
-        if (stock_price_in[i][0] == _starting_date) {
+        if (stock_price_in[i][0] == _train_start_date) {
             startingRow = i;
             for (; i < price_size; i++) {
-                if (stock_price_in[i][0] == _ending_date) {
+                if (stock_price_in[i][0] == _train_end_date) {
                     ending_row = i;
                     break;
                 }
@@ -823,8 +823,7 @@ void cal(int interval_index /*, ofstream& debug*/, int& earlestGen) {
 
 void output(int interval_index, int slide, string company, int earlestExp, int earlestGen) {
     ofstream data;
-    data.open(_output_path + "/" + company + "/train/" + _sliding_windows[slide] + "/" +
-              _days_table[interval_table[interval_index]] + "_" + _days_table[interval_table[interval_index + 1]] + ".csv");
+    data.open(_output_path + "/" + company + "/train/" + _sliding_windows[slide] + "/" + _days_table[interval_table[interval_index]] + "_" + _days_table[interval_table[interval_index + 1]] + ".csv");
     data << "generation," << _generation << endl;
     data << "Partical amount," << PARTICAL_AMOUNT << endl;
     data << "delta," << _delta << endl;
@@ -1224,19 +1223,49 @@ void start_test() {
     }
 }
 
-void cal_IRR() {
+double cal_BH(string company, string startDate, string endDate) {
+    vector< vector< string > > price = read_data("price/" + company + ".csv");
+    int totalDays = price.size();
+    int startRow = 0;
+    int endRow = 0;
+    for (int i = totalDays - 1; i >= 0; i--) {
+        if (price[i][0] == endDate) {
+            endRow = i;
+        }
+        else if (price[i][0] == startDate) {
+            startRow = i;
+            break;
+        }
+    }
+    int stockHold = TOTAL_CP_LV / stod(price[startRow][COL]);
+    double remain = TOTAL_CP_LV - stockHold * stod(price[startRow][COL]);
+    remain += stockHold * stod(price[endRow][COL]);
+    return ((remain - TOTAL_CP_LV) / TOTAL_CP_LV);
+}
+
+void cal_test_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
     int companyNum = company.size();
+    ofstream IRROut;
+    IRROut.open("!test_IRR.csv");
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        string testStartDate;
+        string testEndDate;
+        vector< vector< string > > IRRList;
+        cout << "=====" + company[whichCompany] + "=====" << endl;
+        IRROut << "=====" + company[whichCompany] + "=====" << endl;
         ofstream out;
-        out.open(company[whichCompany] + ".csv");
+        out.open("testIRR/" + company[whichCompany] + ".csv");
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = window.size();
         for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
+            cout << window[whichWindow] << endl;
             double TotalRate = 0;
             out << "====================" + window[whichWindow] + "====================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
             int strategyNum = strategy.size();
+            testStartDate = strategy[0].substr(0, 10);
+            testEndDate = strategy[strategyNum - 1].substr(11, 10);
             for (int strategys = 0; strategys < strategyNum; strategys++) {
                 vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
                 out << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
@@ -1249,10 +1278,91 @@ void cal_IRR() {
             }
             double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
             TotalRate--;
+            vector< string > oneWindowRate;
+            oneWindowRate.push_back(window[whichWindow]);
+            oneWindowRate.push_back(to_string(IRR));
+            // oneWindowRate.push_back(to_string(TotalRate));
+            IRRList.push_back(oneWindowRate);
             out << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
         }
         out.close();
+        vector< string > BH;
+        BH.push_back("B&H");
+        BH.push_back(to_string(pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1));
+        IRRList.push_back(BH);
+        sort(IRRList.begin(), IRRList.end(), [](vector< string >& a, vector< string >& b) {
+            return a[1] > b[1];
+        });
+        for (int i = 0; i < IRRList.size(); i++) {
+            IRRList[i].push_back(to_string(i + 1));
+            for (int j = 0; j < IRRList[0].size(); j++) {
+                IRROut << IRRList[i][j] << ",";
+            }
+            IRROut << endl;
+        }
     }
+    IRROut.close();
+}
+
+void cal_train_IRR() {
+    vector< string > company = get_file(_output_path);  //公司名稱
+    int companyNum = company.size();
+    ofstream IRROut;
+    IRROut.open("!test_IRR.csv");
+    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        string testStartDate;
+        string testEndDate;
+        vector< vector< string > > IRRList;
+        cout << "=====" + company[whichCompany] + "=====" << endl;
+        IRROut << "=====" + company[whichCompany] + "=====" << endl;
+        ofstream out;
+        out.open("testIRR/" + company[whichCompany] + ".csv");
+        vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
+        int windowNum = window.size();
+        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
+            cout << window[whichWindow] << endl;
+            double TotalRate = 0;
+            out << "====================" + window[whichWindow] + "====================" << endl;
+            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
+            int strategyNum = strategy.size();
+            testStartDate = strategy[0].substr(0, 10);
+            testEndDate = strategy[strategyNum - 1].substr(11, 10);
+            for (int strategys = 0; strategys < strategyNum; strategys++) {
+                vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
+                out << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
+                if (strategys == 0) {
+                    TotalRate = stod(file[13][1]) / 100 + 1;
+                }
+                else {
+                    TotalRate = TotalRate * (stod(file[13][1]) / 100 + 1);
+                }
+            }
+            double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
+            TotalRate--;
+            vector< string > oneWindowRate;
+            oneWindowRate.push_back(window[whichWindow]);
+            oneWindowRate.push_back(to_string(IRR));
+            // oneWindowRate.push_back(to_string(TotalRate));
+            IRRList.push_back(oneWindowRate);
+            out << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+        }
+        out.close();
+        vector< string > BH;
+        BH.push_back("B&H");
+        BH.push_back(to_string(pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1));
+        IRRList.push_back(BH);
+        sort(IRRList.begin(), IRRList.end(), [](vector< string >& a, vector< string >& b) {
+            return a[1] > b[1];
+        });
+        for (int i = 0; i < IRRList.size(); i++) {
+            IRRList[i].push_back(to_string(i + 1));
+            for (int j = 0; j < IRRList[0].size(); j++) {
+                IRROut << IRRList[i][j] << ",";
+            }
+            IRROut << endl;
+        }
+    }
+    IRROut.close();
 }
 
 int main(void) {
@@ -1261,10 +1371,15 @@ int main(void) {
             start_train();
             break;
         case 1:
-            start_test();
             break;
         case 2:
-            cal_IRR();
+            start_test();
+            break;
+        case 3:
+            cal_test_IRR();
+            break;
+        case 4:
+            cal_BH(_company, _BH_start_day, _BH_end_day);
             break;
         default:
             cout << "Wrong MODE" << endl;
