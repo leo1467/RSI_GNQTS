@@ -25,7 +25,7 @@ using namespace std;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 2  //0:train, 1:train_IRR, 2:test, 3:test_IRR 4:B&H
+#define MODE 3  //0:train, 1:train_IRR, 2:test, 3:test_IRR 4:B&H
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -1247,28 +1247,32 @@ void cal_test_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
     int companyNum = company.size();
     ofstream IRROut;
-    IRROut.open("!test_IRR.csv");
+    IRROut.open("!test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         string testStartDate;
         string testEndDate;
-        vector< vector< string > > IRRList;
+        struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
+            string window;
+            double IRR;
+        };
+        vector< windowIRR > IRRList;
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
-        ofstream out;
-        out.open("testIRR/" + company[whichCompany] + ".csv");
+        ofstream RoROut;
+        RoROut.open("testIRR/" + company[whichCompany] + ".csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = window.size();
-        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
+        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A，從1開始
             cout << window[whichWindow] << endl;
             double TotalRate = 0;
-            out << "====================" + window[whichWindow] + "====================" << endl;
+            RoROut << "====================" + window[whichWindow] + "====================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
             int strategyNum = strategy.size();
             testStartDate = strategy[0].substr(0, 10);
             testEndDate = strategy[strategyNum - 1].substr(11, 10);
             for (int strategys = 0; strategys < strategyNum; strategys++) {
                 vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
-                out << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
+                RoROut << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
                 if (strategys == 0) {
                     TotalRate = stod(file[13][1]) / 100 + 1;
                 }
@@ -1278,27 +1282,23 @@ void cal_test_IRR() {
             }
             double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
             TotalRate--;
-            vector< string > oneWindowRate;
-            oneWindowRate.push_back(window[whichWindow]);
-            oneWindowRate.push_back(to_string(IRR));
+            windowIRR tmp;
+            tmp.window = window[whichWindow];
+            tmp.IRR = IRR;
             // oneWindowRate.push_back(to_string(TotalRate));
-            IRRList.push_back(oneWindowRate);
-            out << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+            IRRList.push_back(tmp);
+            RoROut << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
         }
-        out.close();
-        vector< string > BH;
-        BH.push_back("B&H");
-        BH.push_back(to_string(pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1));
-        IRRList.push_back(BH);
-        sort(IRRList.begin(), IRRList.end(), [](vector< string >& a, vector< string >& b) {
-            return a[1] > b[1];
+        RoROut.close();
+        windowIRR tmp;
+        tmp.window = "B&H";
+        tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        IRRList.push_back(tmp);
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.IRR > b.IRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRRList[i].push_back(to_string(i + 1));
-            for (int j = 0; j < IRRList[0].size(); j++) {
-                IRROut << IRRList[i][j] << ",";
-            }
-            IRROut << endl;
+            IRROut << IRRList[i].window + "," << IRRList[i].IRR << endl;
         }
     }
     IRROut.close();
@@ -1312,24 +1312,28 @@ void cal_train_IRR() {
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         string testStartDate;
         string testEndDate;
-        vector< vector< string > > IRRList;
+        struct windowIRR {
+            string window;
+            double IRR;
+        };
+        vector< windowIRR > IRRList;
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
-        ofstream out;
-        out.open("testIRR/" + company[whichCompany] + ".csv");
+        ofstream RoROut;
+        RoROut.open("testIRR/" + company[whichCompany] + ".csv");
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = window.size();
         for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
             cout << window[whichWindow] << endl;
             double TotalRate = 0;
-            out << "====================" + window[whichWindow] + "====================" << endl;
+            RoROut << "====================" + window[whichWindow] + "====================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
             int strategyNum = strategy.size();
             testStartDate = strategy[0].substr(0, 10);
             testEndDate = strategy[strategyNum - 1].substr(11, 10);
             for (int strategys = 0; strategys < strategyNum; strategys++) {
                 vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
-                out << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
+                RoROut << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
                 if (strategys == 0) {
                     TotalRate = stod(file[13][1]) / 100 + 1;
                 }
@@ -1339,27 +1343,23 @@ void cal_train_IRR() {
             }
             double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
             TotalRate--;
-            vector< string > oneWindowRate;
-            oneWindowRate.push_back(window[whichWindow]);
-            oneWindowRate.push_back(to_string(IRR));
+            windowIRR tmp;
+            tmp.window = window[whichWindow];
+            tmp.IRR = IRR;
             // oneWindowRate.push_back(to_string(TotalRate));
-            IRRList.push_back(oneWindowRate);
-            out << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+            IRRList.push_back(tmp);
+            RoROut << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
         }
-        out.close();
-        vector< string > BH;
-        BH.push_back("B&H");
-        BH.push_back(to_string(pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1));
-        IRRList.push_back(BH);
-        sort(IRRList.begin(), IRRList.end(), [](vector< string >& a, vector< string >& b) {
-            return a[1] > b[1];
+        RoROut.close();
+        windowIRR tmp;
+        tmp.window = "B&H";
+        tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        IRRList.push_back(tmp);
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.IRR > b.IRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRRList[i].push_back(to_string(i + 1));
-            for (int j = 0; j < IRRList[0].size(); j++) {
-                IRROut << IRRList[i][j] << ",";
-            }
-            IRROut << endl;
+            IRROut << IRRList[i].window + "," << IRRList[i].IRR << endl;
         }
     }
     IRROut.close();
