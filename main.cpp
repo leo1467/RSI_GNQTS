@@ -34,11 +34,10 @@ int _generation = 1000;
 string _train_start_date = "2010-01-04";
 string _train_end_date = "2020-12-31";
 string _test_start_y = to_string(stoi(_train_start_date.substr(0, 4)) + 1);
-string _test_start_m = _train_start_date.substr(5, 2);
 int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_train_start_date.substr(0, 4));
-string _company = "AAPL";
-string _BH_start_day = "2011";
-string _BH_end_day = "";
+string _BH_company = "AAPL";
+string _BH_start_day = "2011-01-03";
+string _BH_end_day = "2020-12-31";
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
 // string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
@@ -614,7 +613,7 @@ void find_window_start_end(int table_size, string windowUse, int sliding_type_in
         }
     }
     else {
-        string mon = _test_start_m;  //記錄目前iterate到什麼月份
+        string mon = _train_start_date.substr(5, 2);  //記錄目前iterate到什麼月份
         string start;  //記錄sliding window開始月份
         string end;  //記錄sliding window結束月份
         int s_jump_e = 0;  //從period頭要找period尾
@@ -1249,8 +1248,6 @@ void cal_test_IRR() {
     ofstream IRROut;
     IRROut.open("!test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
-        string testStartDate;
-        string testEndDate;
         struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
             string window;
             double IRR;
@@ -1259,7 +1256,7 @@ void cal_test_IRR() {
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
         ofstream RoROut;
-        RoROut.open("testIRR/" + company[whichCompany] + ".csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
+        RoROut.open("testIRR/" + company[whichCompany] + "_testIRR.csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = window.size();
         for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A，從1開始
@@ -1268,8 +1265,6 @@ void cal_test_IRR() {
             RoROut << "====================" + window[whichWindow] + "====================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
             int strategyNum = strategy.size();
-            testStartDate = strategy[0].substr(0, 10);
-            testEndDate = strategy[strategyNum - 1].substr(11, 10);
             for (int strategys = 0; strategys < strategyNum; strategys++) {
                 vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
                 RoROut << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
@@ -1287,18 +1282,27 @@ void cal_test_IRR() {
             tmp.IRR = IRR;
             // oneWindowRate.push_back(to_string(TotalRate));
             IRRList.push_back(tmp);
-            RoROut << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+            RoROut << fixed << setprecision(10) << ",,,,,," + window[whichWindow] + "," << TotalRate << "," << IRR << endl;
         }
         RoROut.close();
         windowIRR tmp;
         tmp.window = "B&H";
+        vector< vector< string > > days = read_data("price/" + company[whichCompany] + ".csv");
+        string testStartDate;
+        for (int i = days.size() - 1; i > 0; i--) {
+            if (days[i][0].substr(0, 4) == to_string(stoi(_test_start_y) - 1)) {
+                testStartDate = days[i + 1][0];
+                break;
+            }
+        }
+        string testEndDate = _train_end_date;
         tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
         IRRList.push_back(tmp);
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
             return a.IRR > b.IRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << IRRList[i].window + "," << IRRList[i].IRR << endl;
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].IRR << endl;
         }
     }
     IRROut.close();
@@ -1308,10 +1312,8 @@ void cal_train_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
     int companyNum = company.size();
     ofstream IRROut;
-    IRROut.open("!test_IRR.csv");
+    IRROut.open("!train_IRR.csv");
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
-        string testStartDate;
-        string testEndDate;
         struct windowIRR {
             string window;
             double IRR;
@@ -1320,46 +1322,46 @@ void cal_train_IRR() {
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
         ofstream RoROut;
-        RoROut.open("testIRR/" + company[whichCompany] + ".csv");
-        vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
+        RoROut.open("trainIRR/" + company[whichCompany] + "_trainIRR.csv");
+        vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/train");  //視窗名稱
         int windowNum = window.size();
-        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A
+        for (int whichWindow = 0; whichWindow < windowNum; whichWindow++) {  //No A2A
             cout << window[whichWindow] << endl;
             double TotalRate = 0;
             RoROut << "====================" + window[whichWindow] + "====================" << endl;
-            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
+            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + window[whichWindow]);
             int strategyNum = strategy.size();
-            testStartDate = strategy[0].substr(0, 10);
-            testEndDate = strategy[strategyNum - 1].substr(11, 10);
             for (int strategys = 0; strategys < strategyNum; strategys++) {
-                vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
+                vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/train/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
                 RoROut << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
-                if (strategys == 0) {
-                    TotalRate = stod(file[13][1]) / 100 + 1;
-                }
-                else {
-                    TotalRate = TotalRate * (stod(file[13][1]) / 100 + 1);
-                }
+                TotalRate = TotalRate + (stod(file[13][1]) / 100);
             }
-            double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
-            TotalRate--;
+            TotalRate = TotalRate / strategyNum + 1;
+            double IRR = 0;  //計算年化報酬
+            if (strategyNum == 1) {
+                IRR = pow(TotalRate, (double)1 / (_test_length + 1)) - 1;
+            }
+            else {
+                IRR = pow(TotalRate, strategyNum / _test_length) - 1;
+            }
+            // TotalRate--;
             windowIRR tmp;
             tmp.window = window[whichWindow];
             tmp.IRR = IRR;
             // oneWindowRate.push_back(to_string(TotalRate));
             IRRList.push_back(tmp);
-            RoROut << ",,,,,," + window[whichWindow] + "," + to_string(TotalRate) + "," + to_string(IRR) << endl;
+            RoROut << fixed << setprecision(10) << ",,,,,," + window[whichWindow] + "," << TotalRate << "," << IRR << endl;
         }
         RoROut.close();
         windowIRR tmp;
         tmp.window = "B&H";
-        tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        tmp.IRR = pow(cal_BH(company[whichCompany], _train_start_date, _train_end_date) + 1, (double)1 / (_test_length + 1)) - 1;
         IRRList.push_back(tmp);
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
             return a.IRR > b.IRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << IRRList[i].window + "," << IRRList[i].IRR << endl;
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].IRR << endl;
         }
     }
     IRROut.close();
@@ -1371,6 +1373,7 @@ int main(void) {
             start_train();
             break;
         case 1:
+            cal_train_IRR();
             break;
         case 2:
             start_test();
@@ -1379,7 +1382,7 @@ int main(void) {
             cal_test_IRR();
             break;
         case 4:
-            cal_BH(_company, _BH_start_day, _BH_end_day);
+            cout << cal_BH(_BH_company, _BH_start_day, _BH_end_day) << endl;
             break;
         default:
             cout << "Wrong MODE" << endl;
