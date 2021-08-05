@@ -25,7 +25,7 @@ using namespace std;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 3  //0:train, 1:train_IRR, 2:test, 3:test_IRR 4:B&H
+#define MODE 4  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -35,10 +35,14 @@ string _train_start_date = "2010-01-04";
 string _train_end_date = "2020-12-31";
 string _test_start_y = to_string(stoi(_train_start_date.substr(0, 4)) + 1);
 int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_train_start_date.substr(0, 4));
-string _BH_company = "AAPL";
-string _BH_start_day = "2011-01-03";
-string _BH_end_day = "2020-12-31";
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
+
+string _BH_company = "AAPL";
+string _BH_start_day = "2010-01-04";  //also specify
+string _BH_end_day = "2020-12-31";  //also specify
+int _period = 14;
+int _buySignal = 30;
+int _sellSignal = 70;
 
 // string _RSI_table_path = "/Users/neo/Desktop/VScode/new training/RSI/all_RSI_table";
 // string _price_path = "/Users/neo/Desktop/VScode/new training/RSI/all_price";
@@ -47,9 +51,9 @@ string _RSI_table_path = "RSI_table";
 string _price_path = "price";
 string _output_path = "result";
 
-string* _days_table;  //記錄開始日期到結束日期
-double** _RSI_table;  //記錄一間公司開始日期到結束日期1~256的RSI
-double* _price_table;  //記錄開始日期的股價到結束日期的股價
+string* _days_table = nullptr;  //記錄開始日期到結束日期
+double** _RSI_table = nullptr;  //記錄一間公司開始日期到結束日期1~256的RSI
+double* _price_table = nullptr;  //記錄開始日期的股價到結束日期的股價
 vector< int > interval_table;  //記錄滑動區間
 
 struct prob {
@@ -991,7 +995,7 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test.close();
 }
 
-void cal_test_RoR(string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath) {
+void cal_test_RoR(string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath, ofstream& holdPeriod) {
     int startingRow = 0;
     for (int i = 0; i < totalDays; i++) {
         if (_days_table[i] == startDate) {
@@ -1017,7 +1021,6 @@ void cal_test_RoR(string startDate, string endDate, int period, int buySignal, i
     double returnRate = 0;
     // vector< vector< string > > tradeRecord;
     vector< string > tradeRecord;
-
     if (period != 0) {
         for (int i = startingRow; i <= endingRow; i++) {
             // vector< string > oneTradeRecord;
@@ -1054,6 +1057,13 @@ void cal_test_RoR(string startDate, string endDate, int period, int buySignal, i
                 // tmp = "sell " + _days_table[i] + "," + to_string(_price_table[i]) + "," + to_string(_RSI_table[i][period]) + "," + to_string(remain);
                 // oneTradeRecord.push_back(tmp);
                 // cout << "sell: " << _days_table[i] << "," << _price_table[i] << "," << _RSI_table[i][period] << "," << remain << endl;
+            }
+            holdPeriod << _days_table[i] + "," << _price_table[i] << ",";
+            if (stockHold == 0) {
+                holdPeriod << endl;
+            }
+            else {
+                holdPeriod << _price_table[i] << endl;
             }
         }
     }
@@ -1183,10 +1193,10 @@ void start_test() {
     } */
     int companyNum = company.size();
     vector< string > RSI_table = get_file(_RSI_table_path);  //get RSI table
-    for (int whichCompany = 0; whichCompany < 1; whichCompany++) {
+    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         cout << "===========================" + company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
-        int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]) - 1;  //No A2A
+        int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);  //No A2A
         for (int windowUse = 1; windowUse < windowNum; windowUse++) {  //No A2A
             cout << company[whichCompany] + ":" + _sliding_windows[windowUse] << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
@@ -1200,6 +1210,9 @@ void start_test() {
             else {  //年對年
                 testInterval = find_test_interval(_sliding_windows[windowUse][0], totalDays);
             }
+            ofstream holdPeriod;
+            holdPeriod.open("holdPeriod/" + company[whichCompany] + "/" + company[whichCompany] + "_" + _sliding_windows[windowUse] + ".csv");
+            holdPeriod << ",Price,Hold" << endl;
             string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
             int strategyNum = strategy.size();
             for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
@@ -1210,8 +1223,9 @@ void start_test() {
                 int buySignal = stod(strategyRead[10][1]);
                 int sellSignal = stod(strategyRead[11][1]);
                 // cout << testInterval[strategyUse * 2] + "~" + testInterval[strategyUse * 2 + 1] << endl;
-                cal_test_RoR(testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, outputPath);
+                cal_test_RoR(testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, outputPath, holdPeriod);
             }
+            holdPeriod.close();
         }
         delete[] _days_table;
         delete[] _price_table;
@@ -1367,6 +1381,27 @@ void cal_train_IRR() {
     IRROut.close();
 }
 
+void cal_specify_strategy(string startDate, string endDate, int period, int buySignal, int sellSignal) {
+    vector< string > company = get_file(_output_path);
+    vector< string > RSI_table = get_file(_RSI_table_path);  //get RSI table
+    int companyNum = company.size();
+    for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        cout << company[whichCompany] << endl;
+        int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
+        ofstream holdPeriod;
+        holdPeriod.open("specify/" + company[whichCompany] + "/" + company[whichCompany] + "_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
+        holdPeriod << ",Price,Hold" << endl;
+        cal_test_RoR(startDate, endDate, period, buySignal, sellSignal, totalDays, "specify/" + company[whichCompany] + "/", holdPeriod);
+        delete[] _days_table;
+        delete[] _price_table;
+        for (int i = 0; i < totalDays; i++) {
+            delete[] _RSI_table[i];
+        }
+        delete[] _RSI_table;
+        holdPeriod.close();
+    }
+}
+
 int main(void) {
     switch (MODE) {
         case 0:
@@ -1382,7 +1417,10 @@ int main(void) {
             cal_test_IRR();
             break;
         case 4:
-            cout << cal_BH(_BH_company, _BH_start_day, _BH_end_day) << endl;
+            cal_specify_strategy(_BH_start_day, _BH_end_day, _period, _buySignal, _sellSignal);
+            break;
+        case 5:
+            cout << fixed << setprecision(10) << cal_BH(_BH_company, _BH_start_day, _BH_end_day) * 100 << "%" << endl;
             break;
         default:
             cout << "Wrong MODE" << endl;
