@@ -3,7 +3,7 @@
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
 using namespace filesystem;
@@ -1213,7 +1213,7 @@ void start_test() {
                 testInterval = find_test_interval(_sliding_windows[windowUse][0], totalDays);
             }
             ofstream holdPeriod;
-            holdPeriod.open("holdPeriod/" + company[whichCompany] + "/" + company[whichCompany] + "_" + _sliding_windows[windowUse] + ".csv");
+            holdPeriod.open(_output_path + "/" + company[whichCompany] + "/testHoldPeriod/" + company[whichCompany] + "_" + _sliding_windows[windowUse] + ".csv");
             holdPeriod << ",Price,Hold" << endl;
             string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
             int strategyNum = (int)strategy.size();
@@ -1273,13 +1273,13 @@ void cal_test_IRR() {
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
         ofstream RoROut;
-        RoROut.open("testIRR/" + company[whichCompany] + "_testIRR.csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
+        RoROut.open(_output_path + "/" + company[whichCompany] + "/" + company[whichCompany] + "_testRoR.csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = (int)window.size();
         for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A，從1開始
             cout << window[whichWindow] << endl;
             double TotalRate = 0;
-            RoROut << "====================" + window[whichWindow] + "====================" << endl;
+            RoROut << ",================" + window[whichWindow] + "================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
             int strategyNum = (int)strategy.size();
             for (int strategys = 0; strategys < strategyNum; strategys++) {
@@ -1339,13 +1339,13 @@ void cal_train_IRR() {
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====" << endl;
         ofstream RoROut;
-        RoROut.open("trainIRR/" + company[whichCompany] + "_trainIRR.csv");
+        RoROut.open(_output_path + "/" + company[whichCompany] + "/" + company[whichCompany] + "_trainRoR.csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/train");  //視窗名稱
         int windowNum = (int)window.size();
         for (int whichWindow = 0; whichWindow < windowNum; whichWindow++) {  //No A2A
             cout << window[whichWindow] << endl;
             double TotalRate = 0;
-            RoROut << "====================" + window[whichWindow] + "====================" << endl;
+            RoROut << ",================" + window[whichWindow] + "================" << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + window[whichWindow]);
             int strategyNum = (int)strategy.size();
             for (int strategys = 0; strategys < strategyNum; strategys++) {
@@ -1392,9 +1392,9 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
         cout << company[whichCompany] << endl;
         int totalDays = store_RSI_and_price(_RSI_table_path + "/" + RSI_table[whichCompany], _price_path + "/" + company[whichCompany] + ".csv", 0);
         ofstream holdPeriod;
-        holdPeriod.open("specify/" + company[whichCompany] + "/" + company[whichCompany] + "_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
+        holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + company[whichCompany] + "_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
         holdPeriod << ",Price,Hold" << endl;
-        cal_test_RoR(startDate, endDate, period, buySignal, sellSignal, totalDays, "specify/" + company[whichCompany] + "/", holdPeriod);
+        cal_test_RoR(startDate, endDate, period, buySignal, sellSignal, totalDays, _output_path + "/" + company[whichCompany] + "/specify", holdPeriod);
         delete[] _days_table;
         delete[] _price_table;
         for (int i = 0; i < totalDays; i++) {
@@ -1412,18 +1412,18 @@ void create_folder() {
     sort(v.begin(), v.end());
     vector< string > p;
     for (int i = 0; i < v.size(); i++) {
-        if (v[i].stem() == ".DS_Store") {
+        if (v[i].extension() != ".csv") {
             continue;
         }
-        p.push_back(v[i].stem());
+        p.push_back(v[i].stem().string());
+        //cout << v[i].stem() << endl;
     }
     for (int i = 0; i < p.size(); i++) {
         create_directories(_output_path + "/" + p[i] + "/test");
         create_directories(_output_path + "/" + p[i] + "/train");
-        create_directories(_output_path + "/" + p[i] + "/holdPeriod");
+        create_directories(_output_path + "/" + p[i] + "/testHoldPeriod");
+        create_directories(_output_path + "/" + p[i] + "/trainHoldPeriod");
         create_directories(_output_path + "/" + p[i] + "/specify");
-        create_directories(_output_path + "/" + p[i] + "/testIRR");
-        create_directories(_output_path + "/" + p[i] + "/trainIRR");
         // cout << p[i] << endl;
     }
 }

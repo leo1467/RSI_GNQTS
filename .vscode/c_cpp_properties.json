@@ -20,7 +20,8 @@
         {
             "name": "Win",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "C:\\winlibs-x86_64-posix-seh-gcc-11.2.0-llvm-12.0.1-mingw-w64-9.0.0-r1\\mingw64\\include\\c++\\11.2.0"
             ],
             "defines": [
                 "_DEBUG",
@@ -28,9 +29,9 @@
                 "_UNICODE"
             ],
             "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "C:/mingw-w64/mingw32/bin/cpp.exe",
+            "compilerPath": "C:/winlibs-x86_64-posix-seh-gcc-11.2.0-llvm-12.0.1-mingw-w64-9.0.0-r1/mingw64/bin/g++.exe",
             "cStandard": "c17",
-            "cppStandard": "c++20",
+            "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x64"
         }
     ],
