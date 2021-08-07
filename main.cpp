@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 3  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H
+#define MODE 1  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -40,9 +40,9 @@ int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_train_start_date.s
 string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
 
 string _BH_company = "AAPL";
-string _BH_start_day = "2010-01-04";  //also specify
+string _BH_start_day = "2011-01-03";  //also specify
 string _BH_end_day = "2020-12-31";  //also specify
-int _period = 14;
+int _period = 5;
 int _buySignal = 30;
 int _sellSignal = 70;
 
@@ -92,43 +92,11 @@ vector< vector< string > > read_data(string filename) {
     return data;
 }
 
-vector< string > get_file(string RSI_table_path) {
+vector< string > get_file(string path) {
     DIR* dir;
     struct dirent* ptr;
     vector< string > file_name;
-    dir = opendir(RSI_table_path.c_str());
-    while ((ptr = readdir(dir)) != NULL) {
-        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0 || strcmp(ptr->d_name, ".DS_Store") == 0) {
-            continue;
-        }
-        file_name.push_back(ptr->d_name);
-    }
-    closedir(dir);
-    sort(file_name.begin(), file_name.end());
-    return file_name;
-}
-
-vector< string > get_folder() {
-    DIR* dir;
-    struct dirent* ptr;
-    vector< string > folder_name;
-    dir = opendir(_output_path.c_str());
-    while ((ptr = readdir(dir)) != NULL) {
-        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0 || strcmp(ptr->d_name, ".DS_Store") == 0) {
-            continue;
-        }
-        folder_name.push_back(ptr->d_name);
-    }
-    closedir(dir);
-    sort(folder_name.begin(), folder_name.end());
-    return folder_name;
-}
-
-vector< string > get_stock_file() {
-    DIR* dir;
-    struct dirent* ptr;
-    vector< string > file_name;
-    dir = opendir(_price_path.c_str());
+    dir = opendir(path.c_str());
     while ((ptr = readdir(dir)) != NULL) {
         if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0 || strcmp(ptr->d_name, ".DS_Store") == 0) {
             continue;
@@ -786,8 +754,8 @@ void store_RSI_and_price(int totalDays, int slide, string* daysTable, vector< in
 
 void start_train() {
     vector< string > RSI_file = get_file(RSITable_path);  //get RSI table
-    vector< string > stock_file = get_stock_file();  //get stock price
-    vector< string > company = get_folder();
+    vector< string > stock_file = get_file(_price_path);  //get stock price
+    vector< string > company = get_file(_output_path);
     int companyNum = (int)company.size();
     for (int company_index = 0; company_index < companyNum; company_index++) {
         cout << "===========================" << stock_file[company_index] << endl;
@@ -834,7 +802,12 @@ void start_train() {
 
 void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
-    test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
+    if (MODE == 4) {
+        test.open(outputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
+    }
+    else {
+        test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
+    }
     test << "generation," << _generation << endl;
     test << "Partical amount," << PARTICAL_AMOUNT << endl;
     test << "delta," << _delta << endl;
@@ -863,6 +836,9 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test << "Trading record,Date,Price,RSI,Stock held,Remain,Capital Lv" << endl;
     for (int i = 0; i < tradeReord.size(); i++) {
         test << tradeReord[i] << endl;
+        if (i % 2 == 0) {
+            test << endl;
+        }
     }
     test.close();
 }
@@ -1224,8 +1200,17 @@ void cal_train_IRR() {
             if (strategyNum == 1) {
                 IRR = pow(TotalRate, (double)1 / (_test_length + 1)) - 1;
             }
-            else {
-                IRR = pow(TotalRate, strategyNum / _test_length) - 1;
+            else if (window[whichWindow][0] == 'Y') {
+                IRR = pow(TotalRate, 1) - 1;
+            }
+            else if (window[whichWindow][0] == 'H') {
+                IRR = pow(TotalRate, 2) - 1;
+            }
+            else if (window[whichWindow][0] == 'Q') {
+                IRR = pow(TotalRate, 4) - 1;
+            }
+            else if (window[whichWindow][0] == 'M') {
+                IRR = pow(TotalRate, 12) - 1;
             }
             // TotalRate--;
             windowIRR tmp;
@@ -1261,7 +1246,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
         double* priceTable = store_price_to_arr(_price_path + "/" + company[whichCompany] + ".csv", totalDays);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         ofstream holdPeriod;
-        holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + company[whichCompany] + "_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
+        holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + "hold_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
         holdPeriod << ",Price,Hold" << endl;
         cal_test_RoR(daysTable, priceTable, RSITable, startDate, endDate, period, buySignal, sellSignal, totalDays, _output_path + "/" + company[whichCompany] + "/specify", holdPeriod);
         delete[] daysTable;
@@ -1299,6 +1284,17 @@ void create_folder() {
     }
 }
 
+void remove_file() {
+    vector< path > v;
+    copy(directory_iterator(_output_path), directory_iterator(), back_inserter(v));
+    sort(v.begin(), v.end());
+    for (int i = 0; i < v.size(); i++) {
+        if (is_directory(v[i])) {
+            remove_all(v[i].string() + "/specify/");
+        }
+    }
+}
+
 int main(void) {
     create_folder();
     switch (MODE) {
@@ -1319,6 +1315,9 @@ int main(void) {
             break;
         case 5:
             cout << fixed << setprecision(10) << cal_BH(_BH_company, _BH_start_day, _BH_end_day) * 100 << "%" << endl;
+            break;
+        case 6:
+            remove_file();
             break;
         default:
             cout << "Wrong MODE" << endl;
