@@ -375,3 +375,4 @@ RSI_GNQTS_sliding/RSI_GNQTS_sliding.vcxproj.filters
 RSI_GNQTS_sliding/dirent.h
 RSI_GNQTS_sliding
 main
+*.csv

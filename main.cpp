@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 1  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files
+#define MODE 6  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -802,7 +802,7 @@ void start_train() {
 
 void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
-    if (MODE == 4) {
+    if (MODE == 4 || MODE == 7) {
         test.open(outputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
     }
     else {
@@ -1318,6 +1318,14 @@ int main(void) {
             break;
         case 6:
             remove_file();
+            break;
+        case 7:
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 20, 80);
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 30, 70);
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 6, 20, 80);
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 6, 30, 70);
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 20, 80);
+            cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 30, 70);
             break;
         default:
             cout << "Wrong MODE" << endl;
