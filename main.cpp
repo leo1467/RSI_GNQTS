@@ -4,7 +4,7 @@
 //
 //
 #include <dirent.h>
-#include <sys/stat.h>
+// #include <sys/stat.h>
 
 #include <algorithm>
 #include <cmath>
@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 6  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
+#define MODE 4  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -42,9 +42,9 @@ string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2
 string _BH_company = "AAPL";
 string _BH_start_day = "2011-01-03";  //also specify
 string _BH_end_day = "2020-12-31";  //also specify
-int _period = 5;
-int _buySignal = 30;
-int _sellSignal = 70;
+int _period = 1;
+int _buySignal = 1;
+int _sellSignal = 1;
 
 string RSITable_path = "RSI_table";
 string _price_path = "price";
@@ -802,11 +802,11 @@ void start_train() {
 
 void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
-    if (MODE == 4 || MODE == 7) {
-        test.open(outputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
+    if (MODE == 2) {
+        test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
     }
     else {
-        test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
+        test.open(outputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
     }
     test << "generation," << _generation << endl;
     test << "Partical amount," << PARTICAL_AMOUNT << endl;
@@ -836,7 +836,7 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test << "Trading record,Date,Price,RSI,Stock held,Remain,Capital Lv" << endl;
     for (int i = 0; i < tradeReord.size(); i++) {
         test << tradeReord[i] << endl;
-        if (i % 2 == 0) {
+        if (i % 2 == 1) {
             test << endl;
         }
     }
