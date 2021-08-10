@@ -3,7 +3,7 @@
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 // #include <sys/stat.h>
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
 using namespace filesystem;
@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 4  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
+#define MODE 5  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -74,7 +74,7 @@ vector< vector< string > > read_data(string filename) {
     string line;
     vector< vector< string > > data;
     if (!infile) {
-        cout << "open " + filename + " failed" << endl;
+        cout << "failed to open " + filename << endl;
         exit(1);
     }
     while (getline(infile, line)) {
@@ -1056,7 +1056,7 @@ void start_test() {
             }
             ofstream holdPeriod;
             holdPeriod.open(_output_path + "/" + company[whichCompany] + "/testHoldPeriod/" + company[whichCompany] + "_" + _sliding_windows[windowUse] + ".csv");
-            holdPeriod << ",Price,Hold" << endl;
+            holdPeriod << "Date,Price,Hold" << endl;
             string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
             int strategyNum = (int)strategy.size();
             for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
@@ -1105,7 +1105,7 @@ void cal_test_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
     int companyNum = (int)company.size();
     ofstream IRROut;
-    IRROut.open("!test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
+    IRROut.open("test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
             string window;
@@ -1171,7 +1171,7 @@ void cal_train_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
     int companyNum = (int)company.size();
     ofstream IRROut;
-    IRROut.open("!train_IRR.csv");
+    IRROut.open("train_IRR.csv");
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         struct windowIRR {
             string window;
@@ -1247,7 +1247,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         ofstream holdPeriod;
         holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + "hold_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
-        holdPeriod << ",Price,Hold" << endl;
+        holdPeriod << "Date,Price,Hold" << endl;
         cal_test_RoR(daysTable, priceTable, RSITable, startDate, endDate, period, buySignal, sellSignal, totalDays, _output_path + "/" + company[whichCompany] + "/specify", holdPeriod);
         delete[] daysTable;
         delete[] priceTable;
@@ -1261,38 +1261,73 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
 
 void create_folder() {
     create_directory(_output_path);
-    vector< path > v;
-    copy(directory_iterator(_price_path), directory_iterator(), back_inserter(v));
-    sort(v.begin(), v.end());
-    vector< string > p;
-    for (int i = 0; i < v.size(); i++) {
-        if (v[i].extension() != ".csv") {
-            continue;
+    vector< path > getCompany;
+    copy(directory_iterator(_price_path), directory_iterator(), back_inserter(getCompany));
+    sort(getCompany.begin(), getCompany.end());
+    vector< string > company;
+    for (int i = 0; i < getCompany.size(); i++) {
+        if (getCompany[i].extension() == ".csv") {
+            //cout << getCompany[i].stem() << endl;
+            company.push_back(getCompany[i].stem().string());
         }
-        p.push_back(v[i].stem().string());
-        //cout << v[i].stem() << endl;
     }
-    for (int i = 0; i < p.size(); i++) {
+    for (int i = 0; i < company.size(); i++) {
         for (int j = 0; j < sizeof(_sliding_windows) / sizeof(_sliding_windows[0]); j++) {
-            create_directories(_output_path + "/" + p[i] + "/test/" + _sliding_windows[j]);
-            create_directories(_output_path + "/" + p[i] + "/train/" + _sliding_windows[j]);
+            create_directories(_output_path + "/" + company[i] + "/test/" + _sliding_windows[j]);
+            create_directories(_output_path + "/" + company[i] + "/train/" + _sliding_windows[j]);
         }
-        create_directories(_output_path + "/" + p[i] + "/testHoldPeriod");
-        create_directories(_output_path + "/" + p[i] + "/trainHoldPeriod");
-        create_directories(_output_path + "/" + p[i] + "/specify");
-        // cout << p[i] << endl;
+        create_directories(_output_path + "/" + company[i] + "/testHoldPeriod");
+        create_directories(_output_path + "/" + company[i] + "/trainHoldPeriod");
+        create_directories(_output_path + "/" + company[i] + "/specify");
+        create_directories(_output_path + "/" + company[i] + "/testBestHold");
+        create_directories(_output_path + "/" + company[i] + "/trainBestHold");
+        // cout << company[i] << endl;
     }
 }
 
 void remove_file() {
-    vector< path > v;
-    copy(directory_iterator(_output_path), directory_iterator(), back_inserter(v));
-    sort(v.begin(), v.end());
-    for (int i = 0; i < v.size(); i++) {
-        if (is_directory(v[i])) {
-            remove_all(v[i].string() + "/specify/");
+    vector< path > getCompany;
+    copy(directory_iterator(_output_path), directory_iterator(), back_inserter(getCompany));
+    sort(getCompany.begin(), getCompany.end());
+    for (int i = 0; i < getCompany.size(); i++) {
+        if (is_directory(getCompany[i])) {
+            remove_all(getCompany[i].string() + "/specify/");
         }
     }
+}
+
+void copy_best_hold(string train_or_test, vector< string > companyBestPeriod) {
+    for (int company = 0; company < companyBestPeriod.size(); company += 3) {
+        cout << companyBestPeriod[company] << endl;
+        string from = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "HoldPeriod/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
+        string to = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/";
+        string there = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
+        if (exists(there)) {
+            remove(there);
+        }
+        copy(from, to, copy_options::overwrite_existing);
+    }
+}
+
+void find_best_hold(string train_or_test) {
+    vector< vector< string > > all_IRR = read_data(train_or_test + "_IRR.csv");
+    vector< string > companyBestPeriod;
+    for (int i = 0; i < all_IRR.size(); i++) {
+        if (all_IRR[i][0].front() == '=') {
+            string toPush = all_IRR[i][0];
+            toPush.erase(remove(toPush.begin(), toPush.end(), '='), toPush.end());
+            companyBestPeriod.push_back(toPush);
+            if (all_IRR[i + 1][0].front() != 'B') {
+                companyBestPeriod.push_back(all_IRR[i + 1][0]);
+                companyBestPeriod.push_back(all_IRR[i + 1][1]);
+            }
+            else {
+                companyBestPeriod.push_back(all_IRR[i + 2][0]);
+                companyBestPeriod.push_back(all_IRR[i + 2][1]);
+            }
+        }
+    }
+    copy_best_hold(train_or_test, companyBestPeriod);
 }
 
 int main(void) {
@@ -1311,21 +1346,24 @@ int main(void) {
             cal_test_IRR();
             break;
         case 4:
-            cal_specify_strategy(_BH_start_day, _BH_end_day, _period, _buySignal, _sellSignal);
-            break;
-        case 5:
-            cout << fixed << setprecision(10) << cal_BH(_BH_company, _BH_start_day, _BH_end_day) * 100 << "%" << endl;
-            break;
-        case 6:
-            remove_file();
-            break;
-        case 7:
             cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 20, 80);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 30, 70);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 6, 20, 80);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 6, 30, 70);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 20, 80);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 30, 70);
+            break;
+        case 5:
+            find_best_hold("test");
+            break;
+        case 6:
+            cal_specify_strategy(_BH_start_day, _BH_end_day, _period, _buySignal, _sellSignal);
+            break;
+        case 7:
+            cout << fixed << setprecision(10) << cal_BH(_BH_company, _BH_start_day, _BH_end_day) * 100 << "%" << endl;
+            break;
+        case 8:
+            remove_file();
             break;
         default:
             cout << "Wrong MODE" << endl;
