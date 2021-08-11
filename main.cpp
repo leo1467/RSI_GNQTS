@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 5  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4:specify, 5:B&H, 6: del files, 7: tradition RSI
+#define MODE 5  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4: tradition RSI, 5: fin_best_hold, 6:specify, 7:B&H, 8: del files
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -867,50 +867,50 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
     int buyNum = 0;
     double returnRate = 0;
     vector< string > tradeRecord;
-    if (period != 0) {
-        for (int i = startingRow; i <= endingRow; i++) {
-            // vector< string > oneTradeRecord;
-            if (RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
-                // if (flag == 0) {  //等待第一次RSI小於low_bound
-                //     buyNum++;
-                //     stockHold = TOTAL_CP_LV / priceTable[i];
-                //     remain = TOTAL_CP_LV - priceTable[i] * stockHold;
-                //     flag = 1;
-                //     oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-                //     // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-                //     // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
-                // }
-                // else {
-                // flag = 1;
-                buyNum++;
-                stockHold = remain / priceTable[i];
-                remain -= (double)stockHold * priceTable[i];
-                // oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-                // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-                // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
-                // }
-                // oneTradeRecord.push_back(tmp);
-                tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-                // oneTradeRecord.clear();
-            }
-            else if ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow)) {  //賣出訊號出現且有持股
-                sellNum++;
-                remain += (double)stockHold * priceTable[i];
-                stockHold = 0;
-                // oneTradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-                tradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-                // oneTradeRecord.clear();
-                // tmp = "sell " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-                // oneTradeRecord.push_back(tmp);
-                // cout << "sell: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
-            }
-            holdPeriod << daysTable[i] + "," << priceTable[i] << ",";
-            if (stockHold == 0) {
-                holdPeriod << endl;
-            }
-            else {
-                holdPeriod << priceTable[i] << endl;
-            }
+    for (int i = startingRow; i <= endingRow; i++) {
+        holdPeriod << daysTable[i] + "," << priceTable[i] << ",";
+        // vector< string > oneTradeRecord;
+        if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
+            // if (flag == 0) {  //等待第一次RSI小於low_bound
+            //     buyNum++;
+            //     stockHold = TOTAL_CP_LV / priceTable[i];
+            //     remain = TOTAL_CP_LV - priceTable[i] * stockHold;
+            //     flag = 1;
+            //     oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+            //     // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
+            //     // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
+            // }
+            // else {
+            // flag = 1;
+            buyNum++;
+            stockHold = remain / priceTable[i];
+            remain -= (double)stockHold * priceTable[i];
+            // oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+            // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
+            // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
+            // }
+            // oneTradeRecord.push_back(tmp);
+            tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+            // oneTradeRecord.clear();
+            holdPeriod << priceTable[i] << endl;
+        }
+        else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
+            holdPeriod << priceTable[i] << endl;
+            sellNum++;
+            remain += (double)stockHold * priceTable[i];
+            stockHold = 0;
+            // oneTradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+            tradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+            // oneTradeRecord.clear();
+            // tmp = "sell " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
+            // oneTradeRecord.push_back(tmp);
+            // cout << "sell: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
+        }
+        else if (stockHold != 0) {
+            holdPeriod << priceTable[i] << endl;
+        }
+        else if (stockHold == 0) {
+            holdPeriod << endl;
         }
     }
     //     sellNum++;
@@ -1301,11 +1301,11 @@ void copy_best_hold(string train_or_test, vector< string > companyBestPeriod) {
         cout << companyBestPeriod[company] << endl;
         string from = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "HoldPeriod/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
         string to = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/";
-        string there = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
-        if (exists(there)) {
-            remove(there);
+        string file = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
+        if (exists(file)) {
+            remove(file);
         }
-        copy(from, to, copy_options::overwrite_existing);
+        copy(from, to);
     }
 }
 
