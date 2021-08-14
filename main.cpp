@@ -758,7 +758,7 @@ void start_train() {
     vector< string > company = get_file(_output_path);
     int companyNum = (int)company.size();
     for (int company_index = 0; company_index < companyNum; company_index++) {
-        cout << "===========================" << stock_file[company_index] << endl;
+        cout << "===========================train " << stock_file[company_index] << endl;
         int totalDays = 0;
         string* daysTable = store_days_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄開始日期到結束日期
         double* priceTable = store_price_to_arr(_price_path + "/" + stock_file[company_index], totalDays);  //記錄開始日期的股價到結束日期的股價
@@ -1037,7 +1037,7 @@ void start_test() {
     int companyNum = (int)company.size();
     vector< string > RSI_table = get_file(RSITable_path);  //get RSI table
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
-        cout << "===========================" + company[whichCompany] << endl;
+        cout << "===========================test " + company[whichCompany] << endl;
         int totalDays = 0;
         string* daysTable = store_days_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄開始日期到結束日期
         double* priceTable = store_price_to_arr(_price_path + "/" + company[whichCompany] + ".csv", totalDays);  //記錄開始日期的股價到結束日期的股價
@@ -1157,6 +1157,24 @@ void cal_test_IRR() {
         string testEndDate = _train_end_date;
         tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
         IRRList.push_back(tmp);
+
+        vector< string > tradition = get_file(_output_path + "/" + company[whichCompany] + "/specify");  //找出傳統投資策略的資料
+        for (int i = 0; i < tradition.size(); i++) {
+            if (tradition[i].front() == 'R') {
+                vector< vector< string > > specify = read_data(_output_path + "/" + company[whichCompany] + "/specify/" + tradition[i]);
+                for (int j = tradition[i].length(), k = 0; j >= 0; j--) {
+                    if (tradition[i][j] == '_') {
+                        k++;
+                        if (k == 3) {
+                            tmp.window = tradition[i].substr(4, j - 1);
+                            break;
+                        }
+                    }
+                }
+                tmp.IRR = pow(stod(specify[13][1]) / 100 + 1, (double)1 / _test_length) - 1;
+                IRRList.push_back(tmp);
+            }
+        }
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
             return a.IRR > b.IRR;
         });
@@ -1239,6 +1257,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
     vector< string > company = get_file(_output_path);
     vector< string > RSI_table = get_file(RSITable_path);  //get RSI table
     int companyNum = (int)company.size();
+    cout << "===" << period << "-" << buySignal << "-" << sellSignal << "===" << endl;
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         cout << company[whichCompany] << endl;
         int totalDays = 0;
@@ -1246,7 +1265,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
         double* priceTable = store_price_to_arr(_price_path + "/" + company[whichCompany] + ".csv", totalDays);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         ofstream holdPeriod;
-        holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + "hold_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day + "_" + _BH_end_day + ".csv");
+        holdPeriod.open(_output_path + "/" + company[whichCompany] + "/specify/" + "hold_" + to_string(period) + "_" + to_string(buySignal) + "_" + to_string(sellSignal) + "_" + _BH_start_day.substr(0, 4) + "_" + _BH_end_day.substr(0, 4) + ".csv");
         holdPeriod << "Date,Price,Hold" << endl;
         cal_test_RoR(daysTable, priceTable, RSITable, startDate, endDate, period, buySignal, sellSignal, totalDays, _output_path + "/" + company[whichCompany] + "/specify", holdPeriod);
         delete[] daysTable;
@@ -1261,6 +1280,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
 
 void create_folder() {
     create_directory(_output_path);
+    create_directory("IRR_split");
     vector< path > getCompany;
     copy(directory_iterator(_price_path), directory_iterator(), back_inserter(getCompany));
     sort(getCompany.begin(), getCompany.end());
@@ -1292,6 +1312,7 @@ void remove_file() {
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
             remove_all(getCompany[i].string() + "/specify/");
+            remove_all(getCompany[i].string() + "/testBestHold/");
         }
     }
 }
@@ -1317,13 +1338,12 @@ void find_best_hold(string train_or_test) {
             string toPush = all_IRR[i][0];
             toPush.erase(remove(toPush.begin(), toPush.end(), '='), toPush.end());
             companyBestPeriod.push_back(toPush);
-            if (all_IRR[i + 1][0].front() != 'B') {
-                companyBestPeriod.push_back(all_IRR[i + 1][0]);
-                companyBestPeriod.push_back(all_IRR[i + 1][1]);
-            }
-            else {
-                companyBestPeriod.push_back(all_IRR[i + 2][0]);
-                companyBestPeriod.push_back(all_IRR[i + 2][1]);
+            for (int j = 1; j < 10; j++) {
+                if (all_IRR[i + j][0] != "B&H" && isalpha(all_IRR[i + j][0].front())) {
+                    companyBestPeriod.push_back(all_IRR[i + j][0]);
+                    companyBestPeriod.push_back(all_IRR[i + j][1]);
+                    break;
+                }
             }
         }
     }
