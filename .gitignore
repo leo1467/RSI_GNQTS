@@ -433,3 +433,6 @@ FodyWeavers.xsd
 *.filters
 *.png
 *.xlsx
+main
+.DS_Store
+*.rar

@@ -1,9 +1,9 @@
-﻿//sliding windows
+//sliding windows
 //finished on 2021/05/13
 //
 //
 //
-// #include <dirent.h>
+#include <dirent.h>
 // #include <sys/stat.h>
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "dirent.h"
+// #include "dirent.h"
 
 using namespace std;
 using namespace filesystem;
@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-#define MODE 5  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4: tradition RSI, 5: fin_best_hold, 6:specify, 7:B&H, 8: del files
+int mode = 3;  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4: tradition RSI, 5: fin_best_hold, 6:specify, 7:B&H, 8: del files
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -747,7 +747,7 @@ double** store_RSI_table_to_arr(string RSI_table_path, int totalDays) {
 }
 
 void store_RSI_and_price(int totalDays, int slide, string* daysTable, vector< int >& interval_table) {
-    if (MODE == 0) {
+    if (mode == 0) {
         find_interval(totalDays, slide, daysTable, interval_table);  //找出滑動間格
     }
 }
@@ -802,7 +802,7 @@ void start_train() {
 
 void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
-    if (MODE == 2) {
+    if (mode == 2) {
         test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
     }
     else {
@@ -1162,7 +1162,7 @@ void cal_test_IRR() {
         for (int i = 0; i < tradition.size(); i++) {
             if (tradition[i].front() == 'R') {
                 vector< vector< string > > specify = read_data(_output_path + "/" + company[whichCompany] + "/specify/" + tradition[i]);
-                for (int j = tradition[i].length(), k = 0; j >= 0; j--) {
+                for (int j = (int)tradition[i].length(), k = 0; j >= 0; j--) {
                     if (tradition[i][j] == '_') {
                         k++;
                         if (k == 3) {
@@ -1301,6 +1301,7 @@ void create_folder() {
         create_directories(_output_path + "/" + company[i] + "/specify");
         create_directories(_output_path + "/" + company[i] + "/testBestHold");
         create_directories(_output_path + "/" + company[i] + "/trainBestHold");
+        create_directories(_output_path + "/" + company[i] + "/testTradition");
         // cout << company[i] << endl;
     }
 }
@@ -1320,13 +1321,9 @@ void remove_file() {
 void copy_best_hold(string train_or_test, vector< string > companyBestPeriod) {
     for (int company = 0; company < companyBestPeriod.size(); company += 3) {
         cout << companyBestPeriod[company] << endl;
-        string from = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "HoldPeriod/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
+        string file = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "HoldPeriod/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
         string to = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/";
-        string file = _output_path + "/" + companyBestPeriod[company] + "/" + train_or_test + "bestHold/" + companyBestPeriod[company] + "_" + companyBestPeriod[company + 1] + ".csv";
-        if (exists(file)) {
-            remove(file);
-        }
-        copy(from, to);
+        filesystem::copy(file, to, copy_options::overwrite_existing);
     }
 }
 
@@ -1352,7 +1349,7 @@ void find_best_hold(string train_or_test) {
 
 int main(void) {
     create_folder();
-    switch (MODE) {
+    switch (mode) {
         case 0:
             start_train();
             break;
@@ -1386,7 +1383,7 @@ int main(void) {
             remove_file();
             break;
         default:
-            cout << "Wrong MODE" << endl;
+            cout << "Wrong mode" << endl;
             break;
     }
 }
