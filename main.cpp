@@ -27,7 +27,7 @@ using namespace filesystem;
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
 
-int mode = 3;  //0:train, 1:train_IRR, 2:test, 3:test_IRR, 4: tradition RSI, 5: fin_best_hold, 6:specify, 7:B&H, 8: del files
+int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -746,12 +746,6 @@ double** store_RSI_table_to_arr(string RSI_table_path, int totalDays) {
     return RSITable;
 }
 
-void store_RSI_and_price(int totalDays, int slide, string* daysTable, vector< int >& interval_table) {
-    if (mode == 0) {
-        find_interval(totalDays, slide, daysTable, interval_table);  //找出滑動間格
-    }
-}
-
 void start_train() {
     vector< string > RSI_file = get_file(RSITable_path);  //get RSI table
     vector< string > stock_file = get_file(_price_path);  //get stock price
@@ -764,10 +758,10 @@ void start_train() {
         double* priceTable = store_price_to_arr(_price_path + "/" + stock_file[company_index], totalDays);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
-        for (int slide = 0; slide < windowNum; slide++) {
+        for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {
             srand(343);
-            vector< int > interval_table;  //記錄滑動區間
-            store_RSI_and_price(totalDays, slide, daysTable, interval_table);  //用超大陣列記錄所有RSI及股價
+            vector< int > interval_table;  //記錄視窗區間
+            find_interval(totalDays, windowIndex, daysTable, interval_table);
             int interval_cnt = (int)interval_table.size();
             for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
                 int earlestExp = 0;
@@ -778,7 +772,7 @@ void start_train() {
                 ini_the_best();
                 for (int exp = 0; exp < _exp_times; exp++) {
                     // cout << "exp: " << exp + 1 << "   ";
-                    cal(interval_index /*, debug*/, earlestGen, interval_table, RSITable, priceTable);
+                    cal(interval_index, earlestGen, interval_table, RSITable, priceTable);
                     if (the_best.RoR < Gbest.RoR) {
                         earlestExp = exp;
                         theBestGen = earlestGen;
@@ -786,7 +780,7 @@ void start_train() {
                     update_the_best();
                     // cout << Gbest.RoR << "%" << endl;
                 }
-                output(interval_index, slide, company[company_index], earlestExp + 1, theBestGen + 1, interval_table, daysTable, RSITable, priceTable);
+                output(interval_index, windowIndex, company[company_index], earlestExp + 1, theBestGen + 1, interval_table, daysTable, RSITable, priceTable);
                 cout << the_best.RoR << "%" << endl;
             }
             vector< int >().swap(interval_table);
@@ -800,13 +794,13 @@ void start_train() {
     }
 }
 
-void output_test_file(string outputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
+void output_test_file(string RoROutputPath, string startDate, string endDate, int period, double buySignal, double sellSignal, int tradeNum, double returnRate, vector< string > tradeReord) {
     ofstream test;
-    if (mode == 2) {
-        test.open(outputPath + "/" + startDate + "_" + endDate + ".csv");
+    if (mode == 2 || mode == 3) {
+        test.open(RoROutputPath + "/" + startDate + "_" + endDate + ".csv");
     }
     else {
-        test.open(outputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
+        test.open(RoROutputPath + "/RoR_" + to_string(period) + "_" + to_string((int)buySignal) + "_" + to_string((int)sellSignal) + "_" + startDate + "_" + endDate + ".csv");
     }
     test << "generation," << _generation << endl;
     test << "Partical amount," << PARTICAL_AMOUNT << endl;
@@ -843,7 +837,7 @@ void output_test_file(string outputPath, string startDate, string endDate, int p
     test.close();
 }
 
-void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string outputPath, ofstream& holdPeriod) {
+void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays, string RoROutputPath, ofstream& holdPeriod) {
     int startingRow = 0;
     for (int i = 0; i < totalDays; i++) {
         if (daysTable[i] == startDate) {
@@ -869,29 +863,11 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
     vector< string > tradeRecord;
     for (int i = startingRow; i <= endingRow; i++) {
         holdPeriod << daysTable[i] + "," << priceTable[i] << ",";
-        // vector< string > oneTradeRecord;
         if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
-            // if (flag == 0) {  //等待第一次RSI小於low_bound
-            //     buyNum++;
-            //     stockHold = TOTAL_CP_LV / priceTable[i];
-            //     remain = TOTAL_CP_LV - priceTable[i] * stockHold;
-            //     flag = 1;
-            //     oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            //     // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-            //     // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
-            // }
-            // else {
-            // flag = 1;
             buyNum++;
             stockHold = remain / priceTable[i];
             remain -= (double)stockHold * priceTable[i];
-            // oneTradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            // tmp = "buy " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-            // cout << "buy: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
-            // }
-            // oneTradeRecord.push_back(tmp);
             tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            // oneTradeRecord.clear();
             holdPeriod << priceTable[i] << endl;
         }
         else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
@@ -899,12 +875,7 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
             sellNum++;
             remain += (double)stockHold * priceTable[i];
             stockHold = 0;
-            // oneTradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
             tradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            // oneTradeRecord.clear();
-            // tmp = "sell " + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(remain);
-            // oneTradeRecord.push_back(tmp);
-            // cout << "sell: " << daysTable[i] << "," << priceTable[i] << "," << RSITable[i][period] << "," << remain << endl;
         }
         else if (stockHold != 0) {
             holdPeriod << priceTable[i] << endl;
@@ -913,19 +884,8 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
             holdPeriod << endl;
         }
     }
-    //     sellNum++;
-    // if (stockHold != 0) {
-    //     remain += stockHold * priceTable[endingRow];
-    //     stockHold = 0;
-    //     oneTradeRecord.push_back("sell," + daysTable[endingRow] + "," + to_string(priceTable[endingRow]) + "," + to_string(RSITable[endingRow][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[endingRow] * stockHold));
-    //     tradeRecord.push_back(oneTradeRecord);
-    //     // cout << "sell: " << daysTable[endingRow] << "," << priceTable[endingRow] << "," << RSITable[endingRow][period] << "," << remain << endl;
-    //     // cout << fixed << setprecision(10) << ((remain - TOTAL_CP_LV) / TOTAL_CP_LV) * 100 << "%" << endl;
-    // }
     returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
-    // cout << returnRate * 100 << endl;
-    // cout << "trading times: " << sellNum << endl;
-    output_test_file(outputPath, startDate, endDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
+    output_test_file(RoROutputPath, startDate, endDate, period, buySignal, sellSignal, sellNum, returnRate, tradeRecord);
 }
 
 vector< string > find_test_interval(char interval, int totalDays, string* daysTable) {
@@ -1034,8 +994,8 @@ vector< string > find_test_interval(char interval, int totalDays, string* daysTa
 
 void start_test() {
     vector< string > company = get_file(_output_path);  //get companies name
-    int companyNum = (int)company.size();
     vector< string > RSI_table = get_file(RSITable_path);  //get RSI table
+    int companyNum = (int)company.size();
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         cout << "===========================test " + company[whichCompany] << endl;
         int totalDays = 0;
@@ -1045,7 +1005,6 @@ void start_test() {
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);  //No A2A
         for (int windowUse = 1; windowUse < windowNum; windowUse++) {  //No A2A
             cout << _sliding_windows[windowUse] << endl;
-            vector< int > interval_table;  //記錄滑動區間
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
             vector< string > testInterval;
             if (_sliding_windows[windowUse].length() == 3) {  //一般測試期區間
@@ -1070,7 +1029,6 @@ void start_test() {
                 cal_test_RoR(daysTable, priceTable, RSITable, testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, outputPath, holdPeriod);
             }
             holdPeriod.close();
-            vector< int >().swap(interval_table);
         }
         delete[] daysTable;
         delete[] priceTable;
@@ -1103,48 +1061,57 @@ double cal_BH(string company, string startDate, string endDate) {
 
 void cal_test_IRR() {
     vector< string > company = get_file(_output_path);  //公司名稱
-    int companyNum = (int)company.size();
     ofstream IRROut;
     IRROut.open("test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
+    struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
+        string window;
+        double originIRR;
+        double traditionIRR;
+    } tmp;
+    int companyNum = (int)company.size();
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
-        struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
-            string window;
-            double IRR;
-        };
         vector< windowIRR > IRRList;
         cout << "=====" + company[whichCompany] + "=====" << endl;
-        IRROut << "=====" + company[whichCompany] + "=====" << endl;
-        ofstream RoROut;
+        IRROut << "=====" + company[whichCompany] + "=====,GNQTS,Tradition" << endl;
+        ofstream RoROut, traditionOut;
         RoROut.open(_output_path + "/" + company[whichCompany] + "/" + company[whichCompany] + "_testRoR.csv");  //輸出一間公司所有視窗的每個區間的策略及報酬率
+        traditionOut.open(_output_path + "/" + company[whichCompany] + "/" + company[whichCompany] + "_traditionRoR.csv");
         vector< string > window = get_file(_output_path + "/" + company[whichCompany] + "/test");  //視窗名稱
         int windowNum = (int)window.size();
-        for (int whichWindow = 1; whichWindow < windowNum; whichWindow++) {  //No A2A，從1開始
-            cout << window[whichWindow] << endl;
-            double TotalRate = 0;
-            RoROut << ",================" + window[whichWindow] + "================" << endl;
-            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow]);
+        for (int windowIndex = 1; windowIndex < windowNum; windowIndex++) {  //No A2A，從1開始
+            cout << window[windowIndex] << endl;
+            double totalRate[] = {0, 0};
+            RoROut << ",================" + window[windowIndex] + "================" << endl;
+            traditionOut << ",================" + window[windowIndex] + "================" << endl;
+            vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/test/" + window[windowIndex]);
             int strategyNum = (int)strategy.size();
             for (int strategys = 0; strategys < strategyNum; strategys++) {
-                vector< vector< string > > file = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[whichWindow] + "/" + strategy[strategys]);  //視窗策略
-                RoROut << strategy[strategys] + "," + file[9][1] + "," + file[10][1] + "," + file[11][1] + "," + file[13][1] << endl;
+                vector< vector< string > > originTest = read_data(_output_path + "/" + company[whichCompany] + "/test/" + window[windowIndex] + "/" + strategy[strategys]);
+                vector< vector< string > > traditionTest = read_data(_output_path + "/" + company[whichCompany] + "/testTradition/" + window[windowIndex] + "/" + strategy[strategys]);
+                RoROut << strategy[strategys] + "," + originTest[9][1] + "," + originTest[10][1] + "," + originTest[11][1] + "," + originTest[13][1] << endl;
+                traditionOut << strategy[strategys] + "," + traditionTest[9][1] + "," + traditionTest[10][1] + "," + traditionTest[11][1] + "," + traditionTest[13][1] << endl;
                 if (strategys == 0) {
-                    TotalRate = stod(file[13][1]) / 100 + 1;
+                    totalRate[0] = stod(originTest[13][1]) / 100 + 1;
+                    totalRate[1] = stod(traditionTest[13][1]) / 100 + 1;
                 }
                 else {
-                    TotalRate = TotalRate * (stod(file[13][1]) / 100 + 1);
+                    totalRate[0] = totalRate[0] * (stod(originTest[13][1]) / 100 + 1);
+                    totalRate[1] = totalRate[1] * (stod(traditionTest[13][1]) / 100 + 1);
                 }
             }
-            double IRR = pow(TotalRate, (double)1 / _test_length) - 1;  //計算年化報酬
-            TotalRate--;
-            windowIRR tmp;
-            tmp.window = window[whichWindow];
-            tmp.IRR = IRR;
+            tmp.window = window[windowIndex];
+            tmp.originIRR = pow(totalRate[0], (double)1 / _test_length) - 1;  //計算年化報酬;
+            tmp.traditionIRR = pow(totalRate[1], (double)1 / _test_length) - 1;
+            totalRate[0]--;
+            totalRate[1]--;
             // oneWindowRate.push_back(to_string(TotalRate));
             IRRList.push_back(tmp);
-            RoROut << fixed << setprecision(10) << ",,,,,," + window[whichWindow] + "," << TotalRate << "," << IRR << endl;
+            RoROut << fixed << setprecision(10) << ",,,,,," + window[windowIndex] + "," << totalRate[0] << "," << tmp.originIRR << endl;
+            traditionOut << fixed << setprecision(10) << ",,,,,," + window[windowIndex] + "," << totalRate[1] << "," << tmp.traditionIRR << endl;
         }
         RoROut.close();
-        windowIRR tmp;
+        traditionOut.close();
+        // windowIRR tmp;
         tmp.window = "B&H";
         vector< vector< string > > days = read_data("price/" + company[whichCompany] + ".csv");
         string testStartDate;
@@ -1155,31 +1122,34 @@ void cal_test_IRR() {
             }
         }
         string testEndDate = _train_end_date;
-        tmp.IRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        tmp.originIRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        tmp.traditionIRR = 0;
         IRRList.push_back(tmp);
 
-        vector< string > tradition = get_file(_output_path + "/" + company[whichCompany] + "/specify");  //找出傳統投資策略的資料
-        for (int i = 0; i < tradition.size(); i++) {
-            if (tradition[i].front() == 'R') {
-                vector< vector< string > > specify = read_data(_output_path + "/" + company[whichCompany] + "/specify/" + tradition[i]);
-                for (int j = (int)tradition[i].length(), k = 0; j >= 0; j--) {
-                    if (tradition[i][j] == '_') {
-                        k++;
-                        if (k == 3) {
-                            tmp.window = tradition[i].substr(4, j - 1);
-                            break;
-                        }
-                    }
-                }
-                tmp.IRR = pow(stod(specify[13][1]) / 100 + 1, (double)1 / _test_length) - 1;
-                IRRList.push_back(tmp);
-            }
-        }
+        //=======這邊是A2A的，錯誤
+        // vector< string > tradition = get_file(_output_path + "/" + company[whichCompany] + "/specify");  //找出傳統投資策略的資料
+        // for (int i = 0; i < tradition.size(); i++) {
+        //     if (tradition[i].front() == 'R') {
+        //         vector< vector< string > > specify = read_data(_output_path + "/" + company[whichCompany] + "/specify/" + tradition[i]);
+        //         for (int j = (int)tradition[i].length(), k = 0; j >= 0; j--) {
+        //             if (tradition[i][j] == '_') {
+        //                 k++;
+        //                 if (k == 3) {
+        //                     tmp.window = tradition[i].substr(4, j - 1);
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //         tmp.IRR = pow(stod(specify[13][1]) / 100 + 1, (double)1 / _test_length) - 1;
+        //         IRRList.push_back(tmp);
+        //     }
+        // }
+        //======
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
-            return a.IRR > b.IRR;
+            return a.originIRR > b.originIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].IRR << endl;
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].originIRR << "," << IRRList[i].traditionIRR << endl;
         }
     }
     IRROut.close();
@@ -1301,7 +1271,12 @@ void create_folder() {
         create_directories(_output_path + "/" + company[i] + "/specify");
         create_directories(_output_path + "/" + company[i] + "/testBestHold");
         create_directories(_output_path + "/" + company[i] + "/trainBestHold");
+        // create_directories(_output_path + "/" + company[i] + "/trainTradition");
         create_directories(_output_path + "/" + company[i] + "/testTradition");
+        for (int j = 0; j < sizeof(_sliding_windows) / sizeof(_sliding_windows[0]); j++) {
+            create_directories(_output_path + "/" + company[i] + "/testTradition/" + _sliding_windows[j]);
+        }
+        create_directories(_output_path + "/" + company[i] + "/testTraditionHoldPeriod");
         // cout << company[i] << endl;
     }
 }
@@ -1312,8 +1287,8 @@ void remove_file() {
     sort(getCompany.begin(), getCompany.end());
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
-            remove_all(getCompany[i].string() + "/specify/");
-            remove_all(getCompany[i].string() + "/testBestHold/");
+            remove_all(getCompany[i].string() + "/trainTradition/");
+            remove_all(getCompany[i].string() + "/testTradition/");
         }
     }
 }
@@ -1347,6 +1322,121 @@ void find_best_hold(string train_or_test) {
     copy_best_hold(train_or_test, companyBestPeriod);
 }
 
+double cal_train_tradition_RoR(string* daysTable, double* priceTable, double** RSITable, string startDate, string endDate, int period, int buySignal, int sellSignal, int totalDays) {
+    int startingRow = 0;
+    for (int i = 0; i < totalDays; i++) {
+        if (daysTable[i] == startDate) {
+            startingRow = i;
+            break;
+        }
+    }
+    int endingRow = 0;
+    for (int i = startingRow; i < totalDays; i++) {
+        if (daysTable[i] == endDate) {
+            endingRow = i;
+            break;
+        }
+    }
+    // cout << daysTable[startingRow] << endl;
+    // cout << daysTable[endingRow] << endl;
+    int stockHold = 0;
+    double remain = TOTAL_CP_LV;
+    // int flag = 0;  //記錄手上有錢還是有股票
+    vector< string > tradeRecord;
+    for (int i = startingRow; i <= endingRow; i++) {
+        if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
+            stockHold = remain / priceTable[i];
+            remain -= (double)stockHold * priceTable[i];
+        }
+        else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
+            remain += (double)stockHold * priceTable[i];
+            stockHold = 0;
+        }
+    }
+    return (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
+}
+
+void test_tradition(string* daysTable, double* priceTable, double** RSITable, int totalDays, string company, vector< vector< double > > strategy, string windowUse) {
+    cout << "===========================test tradition " + windowUse << endl;
+    vector< string > testInterval;
+    if (windowUse.length() == 3) {  //一般測試期區間
+        testInterval = find_test_interval(windowUse[2], totalDays, daysTable);
+    }
+    else {  //年對年
+        testInterval = find_test_interval(windowUse[0], totalDays, daysTable);
+    }
+    // for (int i = 0; i < testInterval.size(); i += 2) {
+    //     cout << testInterval[i] << "~" << testInterval[i + 1] << endl;
+    // }
+    ofstream holdPeriod;
+    holdPeriod.open(_output_path + "/" + company + "/testTraditionHoldPeriod/" + company + "_" + windowUse + ".csv");
+    holdPeriod << "Date,Price,Hold" << endl;
+    string RoROutputPath = _output_path + "/" + company + "/testTradition/" + windowUse;
+    int strategyNum = (int)strategy.size();
+    for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
+        // cout << strategyPath << endl;
+        int period = (int)strategy[strategyUse][0];
+        int buySignal = (int)strategy[strategyUse][1];
+        int sellSignal = (int)strategy[strategyUse][2];
+        // cout << testInterval[strategyUse * 2] + "~" + testInterval[strategyUse * 2 + 1] << endl;
+        cal_test_RoR(daysTable, priceTable, RSITable, testInterval[strategyUse * 2], testInterval[strategyUse * 2 + 1], period, buySignal, sellSignal, totalDays, RoROutputPath, holdPeriod);
+    }
+    holdPeriod.close();
+}
+
+void train_tradition() {
+    int traditionStrategy[6][3] = {{5, 20, 80}, {5, 30, 70}, {6, 20, 80}, {6, 30, 70}, {14, 20, 80}, {14, 30, 70}};
+    vector< string > allRSITalble = get_file(RSITable_path);  //get RSI table
+    vector< string > allStockPrice = get_file(_price_path);  //get stock price
+    vector< string > allCompany = get_file(_output_path);
+    int companyNum = (int)allCompany.size();
+    for (int companyIndex = 0; companyIndex < companyNum; companyIndex++) {
+        cout << "===========================train_tradition " << allStockPrice[companyIndex] << endl;
+        int totalDays = 0;
+        string* daysTable = store_days_to_arr(RSITable_path + "/" + allRSITalble[companyIndex], totalDays);  //記錄開始日期到結束日期
+        double* priceTable = store_price_to_arr(_price_path + "/" + allStockPrice[companyIndex], totalDays);  //記錄開始日期的股價到結束日期的股價
+        double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + allRSITalble[companyIndex], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
+        int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
+        for (int windowIndex = 1; windowIndex < windowNum; windowIndex++) {  //不要A2A
+            vector< int > intervalTable;  //記錄視窗區間
+            find_interval(totalDays, windowIndex, daysTable, intervalTable);
+            int intervalNum = (int)intervalTable.size();
+            vector< vector< double > > recordTrainStrategy(intervalNum / 2, vector< double >(4));  //記錄訓練結果
+            for (int intervalIndex = 0; intervalIndex < intervalNum; intervalIndex += 2) {
+                cout << "===" + daysTable[intervalTable[intervalIndex]] + "~" + daysTable[intervalTable[intervalIndex + 1]] + "===" << endl;
+                int traditionNum = sizeof(traditionStrategy) / sizeof(traditionStrategy[0]);
+                for (int whichTradition = 0; whichTradition < traditionNum; whichTradition++) {
+                    double tmpRoR = cal_train_tradition_RoR(daysTable, priceTable, RSITable, daysTable[intervalTable[intervalIndex]], daysTable[intervalTable[intervalIndex + 1]], traditionStrategy[whichTradition][0], traditionStrategy[whichTradition][1], traditionStrategy[whichTradition][2], totalDays);
+                    // cout << traditionStrategy[whichTradition][0] << "_" << traditionStrategy[whichTradition][1] << "_" << traditionStrategy[whichTradition][2] << ":" << tmpRoR << endl;
+                    if (tmpRoR >= recordTrainStrategy[intervalIndex / 2][3]) {
+                        for (int i = 0; i < 3; i++) {
+                            recordTrainStrategy[intervalIndex / 2][i] = (double)traditionStrategy[whichTradition][i];
+                        }
+                        recordTrainStrategy[intervalIndex / 2][3] = tmpRoR;
+                    }
+                }
+                for (int i = 0; i < 4; i++) {
+                    cout << recordTrainStrategy[intervalIndex / 2][i] << "_";
+                }
+                cout << endl;
+                // cout << recordTrainStrategy[intervalIndex / 2][3] << endl;
+            }
+            // for (int i = 0; i < recordTrainStrategy.size(); i++) {
+            //     for (int j = 0; j < recordTrainStrategy[i].size(); j++) {
+            //         cout << recordTrainStrategy[i][j] << endl;
+            //     }
+            // }
+            test_tradition(daysTable, priceTable, RSITable, totalDays, allCompany[companyIndex], recordTrainStrategy, _sliding_windows[windowIndex]);
+            vector< int >().swap(intervalTable);
+        }
+        delete[] daysTable;
+        delete[] priceTable;
+        for (int i = 0; i < totalDays; i++) {
+            delete[] RSITable[i];
+        }
+        delete[] RSITable;
+    }
+}
 int main(void) {
     create_folder();
     switch (mode) {
@@ -1360,9 +1450,12 @@ int main(void) {
             start_test();
             break;
         case 3:
-            cal_test_IRR();
+            train_tradition();
             break;
         case 4:
+            cal_test_IRR();
+            break;
+        case 5:
             cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 20, 80);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 5, 30, 70);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 6, 20, 80);
@@ -1370,16 +1463,16 @@ int main(void) {
             cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 20, 80);
             cal_specify_strategy(_BH_start_day, _BH_end_day, 14, 30, 70);
             break;
-        case 5:
+        case 6:
             find_best_hold("test");
             break;
-        case 6:
+        case 7:
             cal_specify_strategy(_BH_start_day, _BH_end_day, _period, _buySignal, _sellSignal);
             break;
-        case 7:
+        case 8:
             cout << fixed << setprecision(10) << cal_BH(_BH_company, _BH_start_day, _BH_end_day) * 100 << "%" << endl;
             break;
-        case 8:
+        case 9:
             remove_file();
             break;
         default:
