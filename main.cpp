@@ -1,9 +1,9 @@
-//sliding windows
+﻿//sliding windows
 //finished on 2021/05/13
 //
 //
 //
-#include <dirent.h>
+// #include <dirent.h>
 // #include <sys/stat.h>
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-// #include "dirent.h"
+#include "dirent.h"
 
 using namespace std;
 using namespace filesystem;
@@ -26,6 +26,8 @@ using namespace filesystem;
 #define START 2  //股價csv裡的開始欄位
 #define COL 4  //股價在第幾COLumn
 #define TOTAL_CP_LV 10000000.0
+#define PERIOD_BIT 8
+#define OVERSOLD_BOUGHT_BIT 7
 
 int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files
 
@@ -51,15 +53,15 @@ string _price_path = "price";
 string _output_path = "result";
 
 struct prob {
-    double period[8];
-    double buying_signal[7];  //oversold
-    double selling_signal[7];  //overbought
+    double period[PERIOD_BIT];
+    double buying_signal[OVERSOLD_BOUGHT_BIT];  //oversold
+    double selling_signal[OVERSOLD_BOUGHT_BIT];  //overbought
 } prob_matrix;
 
 struct partical {
-    int period_bi[8];
-    int buying_signal_bi[7];  //oversold
-    int selling_signal_bi[7];  //overbought
+    int period_bi[PERIOD_BIT];
+    int buying_signal_bi[OVERSOLD_BOUGHT_BIT];  //oversold
+    int selling_signal_bi[OVERSOLD_BOUGHT_BIT];  //overbought
     int period_dec;
     double buying_signal_dec;  //oversold
     double selling_signal_dec;  //overbought
@@ -110,10 +112,10 @@ vector< string > get_file(string path) {
 
 void ini_local() {
     for (int i = 0; i < PARTICAL_AMOUNT; i++) {
-        for (int j = 0; j < 8; j++) {
+        for (int j = 0; j < PERIOD_BIT; j++) {
             partical[i].period_bi[j] = 0;
         }
-        for (int j = 0; j < 7; j++) {
+        for (int j = 0; j < OVERSOLD_BOUGHT_BIT; j++) {
             partical[i].buying_signal_bi[j] = 0;
             partical[i].selling_signal_bi[j] = 0;
         }
@@ -125,11 +127,11 @@ void ini_local() {
         partical[i].trading_times = 0;
     }
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < PERIOD_BIT; i++) {
         Lbest.period_bi[i] = 0;
         Lworst.period_bi[i] = 0;
     }
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
         Lbest.buying_signal_bi[i] = 0;
         Lbest.selling_signal_bi[i] = 0;
         Lworst.buying_signal_bi[i] = 0;
@@ -151,11 +153,11 @@ void ini_local() {
 }
 
 void ini_global() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < PERIOD_BIT; i++) {
         Gbest.period_bi[i] = 0;
         Gworst.period_bi[i] = 0;
     }
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
         Gbest.buying_signal_bi[i] = 0;
         Gbest.selling_signal_bi[i] = 0;
         Gworst.buying_signal_bi[i] = 0;
@@ -177,10 +179,10 @@ void ini_global() {
 }
 
 void ini_the_best() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < PERIOD_BIT; i++) {
         the_best.period_bi[i] = 0;
     }
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
         the_best.buying_signal_bi[i] = 0;
         the_best.selling_signal_bi[i] = 0;
     }
@@ -193,10 +195,10 @@ void ini_the_best() {
 }
 
 void ini_beta_matrix() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < PERIOD_BIT; i++) {
         prob_matrix.period[i] = 0.5;
     }
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
         prob_matrix.buying_signal[i] = 0.5;
         prob_matrix.selling_signal[i] = 0.5;
     }
@@ -205,7 +207,7 @@ void ini_beta_matrix() {
 void measure() {
     double r;
     for (int i = 0; i < PARTICAL_AMOUNT; i++) {
-        for (int j = 0; j < 8; j++) {
+        for (int j = 0; j < PERIOD_BIT; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
             if (r <= prob_matrix.period[j]) {
@@ -215,7 +217,7 @@ void measure() {
                 partical[i].period_bi[j] = 0;
             }
         }
-        for (int j = 0; j < 7; j++) {
+        for (int j = 0; j < OVERSOLD_BOUGHT_BIT; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
             if (r <= prob_matrix.buying_signal[j]) {
@@ -225,7 +227,7 @@ void measure() {
                 partical[i].buying_signal_bi[j] = 0;
             }
         }
-        for (int j = 0; j < 7; j++) {
+        for (int j = 0; j < OVERSOLD_BOUGHT_BIT; j++) {
             r = rand();
             r = r / (double)RAND_MAX;
             if (r <= prob_matrix.selling_signal[j]) {
@@ -243,10 +245,10 @@ void bi_to_dec() {
         partical[i].period_dec = 0;
         partical[i].buying_signal_dec = 0;
         partical[i].selling_signal_dec = 0;
-        for (int j = 0, k = 7; j < 8; j++, k--) {
+        for (int j = 0, k = PERIOD_BIT - 1; j < PERIOD_BIT; j++, k--) {
             partical[i].period_dec += pow(2, k) * partical[i].period_bi[j];
         }
-        for (int j = 0, k = 6; j < 7; j++, k--) {
+        for (int j = 0, k = OVERSOLD_BOUGHT_BIT - 1; j < OVERSOLD_BOUGHT_BIT; j++, k--) {
             partical[i].buying_signal_dec += pow(2, k) * partical[i].buying_signal_bi[j];
             partical[i].selling_signal_dec += pow(2, k) * partical[i].selling_signal_bi[j];
         }
@@ -256,10 +258,10 @@ void bi_to_dec() {
 
 void update_local(int partical_num) {
     if (partical[partical_num].RoR > Lbest.RoR) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < PERIOD_BIT; i++) {
             Lbest.period_bi[i] = partical[partical_num].period_bi[i];
         }
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
             Lbest.buying_signal_bi[i] = partical[partical_num].buying_signal_bi[i];
             Lbest.selling_signal_bi[i] = partical[partical_num].selling_signal_bi[i];
         }
@@ -272,10 +274,10 @@ void update_local(int partical_num) {
     }
 
     if (partical[partical_num].RoR < Lworst.RoR) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < PERIOD_BIT; i++) {
             Lworst.period_bi[i] = partical[partical_num].period_bi[i];
         }
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
             Lworst.buying_signal_bi[i] = partical[partical_num].buying_signal_bi[i];
             Lworst.selling_signal_bi[i] = partical[partical_num].selling_signal_bi[i];
         }
@@ -290,10 +292,10 @@ void update_local(int partical_num) {
 
 void update_global() {
     if (Lbest.RoR > Gbest.RoR) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < PERIOD_BIT; i++) {
             Gbest.period_bi[i] = Lbest.period_bi[i];
         }
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
             Gbest.buying_signal_bi[i] = Lbest.buying_signal_bi[i];
             Gbest.selling_signal_bi[i] = Lbest.selling_signal_bi[i];
         }
@@ -306,7 +308,7 @@ void update_global() {
     }
     //===============================================================================
     if (Gbest.RoR != 0) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < PERIOD_BIT; i++) {
             if (Gbest.period_bi[i] == 1 && Lworst.period_bi[i] == 0 && prob_matrix.period[i] < 0.5) {
                 prob_matrix.period[i] = 1.0 - prob_matrix.period[i];
             }
@@ -320,7 +322,7 @@ void update_global() {
                 prob_matrix.period[i] -= _delta;
             }
         }
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
             if (Gbest.buying_signal_bi[i] == 1 && Lworst.buying_signal_bi[i] == 0 && prob_matrix.buying_signal[i] < 0.5) {
                 prob_matrix.buying_signal[i] = 1.0 - prob_matrix.buying_signal[i];
             }
@@ -352,10 +354,10 @@ void update_global() {
 
 void update_the_best() {
     if (the_best.RoR < Gbest.RoR) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < PERIOD_BIT; i++) {
             the_best.period_bi[i] = Gbest.period_bi[i];
         }
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < OVERSOLD_BOUGHT_BIT; i++) {
             the_best.buying_signal_bi[i] = Gbest.buying_signal_bi[i];
             the_best.selling_signal_bi[i] = Gbest.selling_signal_bi[i];
         }
@@ -1123,7 +1125,7 @@ void cal_test_IRR() {
         }
         string testEndDate = _train_end_date;
         tmp.originIRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
-        tmp.traditionIRR = 0;
+        tmp.traditionIRR = tmp.originIRR;
         IRRList.push_back(tmp);
 
         //=======這邊是A2A的，錯誤
