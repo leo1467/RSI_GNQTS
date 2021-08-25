@@ -29,7 +29,7 @@ using namespace filesystem;
 #define PERIOD_BIT 8
 #define OVERSOLD_BOUGHT_BIT 7
 
-int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files
+int mode = 10;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -1439,6 +1439,87 @@ void train_tradition() {
         delete[] RSITable;
     }
 }
+
+void make_RSI_table() {
+    string startY = "2009";
+    string endY = "2021";
+    vector< path > companyPath;
+    copy(directory_iterator("RSI"), directory_iterator(), back_inserter(companyPath));
+    sort(companyPath.begin(), companyPath.end());
+    vector< path > companyName;
+    copy(directory_iterator("price"), directory_iterator(), back_inserter(companyName));
+    sort(companyName.begin(), companyName.end());
+    for (int companyIndex = 0; companyIndex < companyPath.size(); companyIndex++) {
+        cout << companyName[companyIndex].stem() << endl;
+        vector< path > RSIFilePath;
+        copy(directory_iterator(companyPath[companyIndex]), directory_iterator(), back_inserter(RSIFilePath));
+        sort(RSIFilePath.begin(), RSIFilePath.end());
+        vector< vector< string > > RSI1 = read_data(RSIFilePath[0].string());
+        int totalDays = (int)RSI1.size();
+        int startRow = 0;
+        int endRow = 0;
+        for (int i = 0, j = 0; i < totalDays; i++) {
+            if (j == 0 && RSI1[i][0].substr(0, 4) == startY) {
+                startRow = i;
+                j++;
+            }
+            else if (j == 1 && RSI1[i][0].substr(0, 4) == endY) {
+                endRow = i - 1;
+                j++;
+            }
+        }
+        int trainDays = endRow - startRow + 1;
+
+        // for (int i = 0; i < RSI1.size(); i++) {
+        //     for (int j = 0; j < RSI1[i].size(); j++) {
+        //         cout << RSI1[i][j] + "\t";
+        //     }
+        //     cout << endl;
+        // }
+        // cout << company[companyIndex].stem() << endl;
+        // cout << RSI1[startRow][0] << endl;
+        // cout << RSI1[endRow][0] << endl;
+
+        string** RSITable = new string*[trainDays];
+        for (int i = 0; i < trainDays; i++) {
+            RSITable[i] = new string[257];
+        }
+        for (int i = 0, j = startRow; i < trainDays; i++, j++) {
+            RSITable[i][0] = RSI1[j][0];
+            RSITable[i][1] = RSI1[j][1];
+        }
+        for (int RSIFileIndex = 1, RSINow = 2; RSIFileIndex < RSIFilePath.size(); RSIFileIndex++, RSINow++) {
+            vector< vector< string > > RSI = read_data(RSIFilePath[RSIFileIndex].string());
+            for (int i = 0, j = 0; i < totalDays; i++) {
+                if (j == 0 && RSI[i][0].substr(0, 4) == startY) {
+                    startRow = i;
+                    j++;
+                }
+                else if (j == 1 && RSI[i][0].substr(0, 4) == endY) {
+                    endRow = i - 1;
+                    j++;
+                }
+            }
+            for (int i = 0, j = startRow; i < trainDays; i++, j++) {
+                RSITable[i][RSINow] = RSI[j][1];
+            }
+        }
+        ofstream out;
+        out.open("RSI_table/" + companyName[companyIndex].stem().string() + "_RSI_table.csv");
+        for (int i = 0; i < trainDays; i++) {
+            for (int j = 0; j < 257; j++) {
+                out << RSITable[i][j] + ",";
+            }
+            out << endl;
+        }
+        out.close();
+        // for (int i = 0; i < trainDays; i++) { //不知道為什麼，執行delete會造成錯誤，雖然可以執行，但是記憶體會吃很多
+        //     delete[] RSITable[i];
+        // }
+        // delete[] RSITable;
+    }
+}
+
 int main(void) {
     create_folder();
     switch (mode) {
@@ -1476,6 +1557,9 @@ int main(void) {
             break;
         case 9:
             remove_file();
+            break;
+        case 10:
+            make_RSI_table();
             break;
         default:
             cout << "Wrong mode" << endl;
