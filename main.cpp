@@ -29,17 +29,17 @@ using namespace filesystem;
 #define PERIOD_BIT 8
 #define OVERSOLD_BOUGHT_BIT 7
 
-int mode = 10;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
+int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
 int _generation = 1000;
 
-string _train_start_date = "2010-01-04";
+string _train_start_date = "2009-01-02";
 string _train_end_date = "2020-12-31";
-string _test_start_y = to_string(stoi(_train_start_date.substr(0, 4)) + 1);
-int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_train_start_date.substr(0, 4));
-string _sliding_windows[] = {"A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M"};
+string _test_start_y = "2011";
+int _test_length = stoi(_train_end_date.substr(0, 4)) - stoi(_test_start_y) + 1;
+string _sliding_windows[] = {/* "A2A", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "YY2Y" ,  */ "YH2Y"};
 
 string _BH_company = "AAPL";
 string _BH_start_day = "2011-01-03";  //also specify
@@ -560,11 +560,88 @@ void find_window_start_end(int table_size, string windowUse, int sliding_type_in
     }
 }
 
+void find_YY2Y_window(int tableSize, string windowUse, int slideType, string* daysTable, vector< int >& intervalTable) {
+    int testStartRow = -1;
+    for (int i = 0; i < tableSize; i++) {
+        if (daysTable[i].substr(0, 4) == _test_start_y) {
+            testStartRow = i;
+            break;
+        }
+    }
+    if (testStartRow == -1) {
+        cout << "can not find " + windowUse + " testStartRow" << endl;
+        exit(1);
+    }
+    int trainStartYear = stoi(_train_start_date.substr(0, 4));
+    int trainEndYear = trainStartYear + 2;
+    vector< int > startRow;
+    vector< int > endRow;
+    for (int i = 0; startRow.size() < _test_length; i++) {
+        if (trainStartYear == stoi(daysTable[i].substr(0, 4))) {
+            startRow.push_back(i);
+            trainStartYear++;
+        }
+    }
+    for (int i = 0; endRow.size() < _test_length; i++) {
+        if (trainEndYear == stoi(daysTable[i].substr(0, 4))) {
+            endRow.push_back(i - 1);
+            trainEndYear++;
+        }
+    }
+    for (int i = 0; i < startRow.size(); i++) {
+        intervalTable.push_back(startRow[i]);
+        intervalTable.push_back(endRow[i]);
+        // cout << daysTable[startRow[i]] << endl;
+    }
+}
+
+void find_YH2Y_window(int tableSize, string windowUse, int slideType, string* daysTable, vector< int >& intervalTable) {
+    int testStartRow = -1;
+    for (int i = 0; i < tableSize; i++) {
+        if (daysTable[i].substr(5, 2) == "07") {
+            testStartRow = i;
+            break;
+        }
+    }
+    if (testStartRow == -1) {
+        cout << "can not find " + windowUse + " testStartRow" << endl;
+        exit(1);
+    }
+    int trainStartYear = stoi(_train_start_date.substr(0, 4));
+    int trainEndYear = trainStartYear + 2;
+    vector< int > startRow;
+    vector< int > endRow;
+    for (int i = 0; startRow.size() < _test_length; i++) {
+        if (trainStartYear == stoi(daysTable[i].substr(0, 4)) && daysTable[i].substr(5, 2) == "07") {
+            startRow.push_back(i);
+            trainStartYear++;
+            i += 30;
+        }
+    }
+    for (int i = 0; endRow.size() < _test_length; i++) {
+        if (trainEndYear == stoi(daysTable[i].substr(0, 4))) {
+            endRow.push_back(i - 1);
+            trainEndYear++;
+        }
+    }
+    for (int i = 0; i < startRow.size(); i++) {
+        intervalTable.push_back(startRow[i]);
+        intervalTable.push_back(endRow[i]);
+        // cout << daysTable[startRow[i]] << endl;
+    }
+}
+
 void find_interval(int table_size, int slide, string* daysTable, vector< int >& interval_table) {  //將A2A跟其他分開
     cout << "looking for interval " + _sliding_windows[slide] << endl;
     if (_sliding_windows[slide] == "A2A") {  //直接給A2A的起始與結束row
         interval_table.push_back(0);
         interval_table.push_back(table_size - 1);
+    }
+    else if (_sliding_windows[slide] == "YY2Y") {
+        find_YY2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
+    }
+    else if (_sliding_windows[slide] == "YH2Y") {
+        find_YH2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
     }
     else {  //開始找普通滑動視窗的起始與結束
         find_window_start_end(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
@@ -754,45 +831,50 @@ void start_train() {
     vector< string > company = get_file(_output_path);
     int companyNum = (int)company.size();
     for (int company_index = 0; company_index < companyNum; company_index++) {
-        cout << "===========================train " << stock_file[company_index] << endl;
-        int totalDays = 0;
-        string* daysTable = store_days_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄開始日期到結束日期
-        double* priceTable = store_price_to_arr(_price_path + "/" + stock_file[company_index], totalDays);  //記錄開始日期的股價到結束日期的股價
-        double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
-        int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
-        for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {
-            srand(343);
-            vector< int > interval_table;  //記錄視窗區間
-            find_interval(totalDays, windowIndex, daysTable, interval_table);
-            int interval_cnt = (int)interval_table.size();
-            for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
-                int earlestExp = 0;
-                int earlestGen = 0;
-                int theBestGen = 0;
-                int bestTimes = 0;
-                cout << "===" + daysTable[interval_table[interval_index]] + "~" + daysTable[interval_table[interval_index + 1]] + "===" << endl;
-                ini_the_best();
-                for (int exp = 0; exp < _exp_times; exp++) {
-                    // cout << "exp: " << exp + 1 << "   ";
-                    cal(interval_index, earlestGen, interval_table, RSITable, priceTable);
-                    if (the_best.RoR < Gbest.RoR) {
-                        earlestExp = exp;
-                        theBestGen = earlestGen;
+        cout << company[company_index] << endl;
+        cout << RSI_file[company_index] << endl;
+        cout << stock_file[company_index] << endl;
+        if (stoi(_train_start_date.substr(0, 4)) > 2009 || company[company_index] != "V") {
+            cout << "===========================train " << company[company_index] << endl;
+            int totalDays = 0;
+            string* daysTable = store_days_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄開始日期到結束日期
+            double* priceTable = store_price_to_arr(_price_path + "/" + stock_file[company_index], totalDays);  //記錄開始日期的股價到結束日期的股價
+            double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
+            int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
+            for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {
+                srand(343);
+                vector< int > interval_table;  //記錄視窗區間
+                find_interval(totalDays, windowIndex, daysTable, interval_table);
+                int interval_cnt = (int)interval_table.size();
+                for (int interval_index = 0; interval_index < interval_cnt; interval_index += 2) {
+                    int earlestExp = 0;
+                    int earlestGen = 0;
+                    int theBestGen = 0;
+                    int bestTimes = 0;
+                    cout << "===" + daysTable[interval_table[interval_index]] + "~" + daysTable[interval_table[interval_index + 1]] + "===" << endl;
+                    ini_the_best();
+                    for (int exp = 0; exp < _exp_times; exp++) {
+                        // cout << "exp: " << exp + 1 << "   ";
+                        cal(interval_index, earlestGen, interval_table, RSITable, priceTable);
+                        if (the_best.RoR < Gbest.RoR) {
+                            earlestExp = exp;
+                            theBestGen = earlestGen;
+                        }
+                        update_the_best();
+                        // cout << Gbest.RoR << "%" << endl;
                     }
-                    update_the_best();
-                    // cout << Gbest.RoR << "%" << endl;
+                    output(interval_index, windowIndex, company[company_index], earlestExp + 1, theBestGen + 1, interval_table, daysTable, RSITable, priceTable);
+                    cout << the_best.RoR << "%" << endl;
                 }
-                output(interval_index, windowIndex, company[company_index], earlestExp + 1, theBestGen + 1, interval_table, daysTable, RSITable, priceTable);
-                cout << the_best.RoR << "%" << endl;
+                vector< int >().swap(interval_table);
             }
-            vector< int >().swap(interval_table);
+            delete[] daysTable;
+            delete[] priceTable;
+            for (int i = 0; i < totalDays; i++) {
+                delete[] RSITable[i];
+            }
+            delete[] RSITable;
         }
-        delete[] daysTable;
-        delete[] priceTable;
-        for (int i = 0; i < totalDays; i++) {
-            delete[] RSITable[i];
-        }
-        delete[] RSITable;
     }
 }
 
@@ -1005,13 +1087,17 @@ void start_test() {
         double* priceTable = store_price_to_arr(_price_path + "/" + company[whichCompany] + ".csv", totalDays);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);  //No A2A
-        for (int windowUse = 1; windowUse < windowNum; windowUse++) {  //No A2A
+        for (int windowUse = 0; windowUse < windowNum; windowUse++) {  //No A2A
             cout << _sliding_windows[windowUse] << endl;
             vector< string > strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
             vector< string > testInterval;
             if (_sliding_windows[windowUse].length() == 3) {  //一般測試期區間
                 testInterval = find_test_interval(_sliding_windows[windowUse][2], totalDays, daysTable);
             }
+            else if (_sliding_windows[windowUse].length() == 4) {
+                testInterval = find_test_interval(_sliding_windows[windowUse][3], totalDays, daysTable);
+            }
+
             else {  //年對年
                 testInterval = find_test_interval(_sliding_windows[windowUse][0], totalDays, daysTable);
             }
@@ -1148,7 +1234,7 @@ void cal_test_IRR() {
         // }
         //======
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
-            return a.originIRR > b.originIRR;
+            return a.traditionIRR > b.traditionIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
             IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].originIRR << "," << IRRList[i].traditionIRR << endl;
@@ -1399,7 +1485,7 @@ void train_tradition() {
         double* priceTable = store_price_to_arr(_price_path + "/" + allStockPrice[companyIndex], totalDays);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + allRSITalble[companyIndex], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
-        for (int windowIndex = 1; windowIndex < windowNum; windowIndex++) {  //不要A2A
+        for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {  //不要A2A
             vector< int > intervalTable;  //記錄視窗區間
             find_interval(totalDays, windowIndex, daysTable, intervalTable);
             int intervalNum = (int)intervalTable.size();
@@ -1450,73 +1536,74 @@ void make_RSI_table() {
     copy(directory_iterator("price"), directory_iterator(), back_inserter(companyName));
     sort(companyName.begin(), companyName.end());
     for (int companyIndex = 0; companyIndex < companyPath.size(); companyIndex++) {
-        cout << companyName[companyIndex].stem() << endl;
-        vector< path > RSIFilePath;
-        copy(directory_iterator(companyPath[companyIndex]), directory_iterator(), back_inserter(RSIFilePath));
-        sort(RSIFilePath.begin(), RSIFilePath.end());
-        vector< vector< string > > RSI1 = read_data(RSIFilePath[0].string());
-        int totalDays = (int)RSI1.size();
-        int startRow = 0;
-        int endRow = 0;
-        for (int i = 0, j = 0; i < totalDays; i++) {
-            if (j == 0 && RSI1[i][0].substr(0, 4) == startY) {
-                startRow = i;
-                j++;
-            }
-            else if (j == 1 && RSI1[i][0].substr(0, 4) == endY) {
-                endRow = i - 1;
-                j++;
-            }
-        }
-        int trainDays = endRow - startRow + 1;
-
-        // for (int i = 0; i < RSI1.size(); i++) {
-        //     for (int j = 0; j < RSI1[i].size(); j++) {
-        //         cout << RSI1[i][j] + "\t";
-        //     }
-        //     cout << endl;
-        // }
-        // cout << company[companyIndex].stem() << endl;
-        // cout << RSI1[startRow][0] << endl;
-        // cout << RSI1[endRow][0] << endl;
-
-        string** RSITable = new string*[trainDays];
-        for (int i = 0; i < trainDays; i++) {
-            RSITable[i] = new string[257];
-        }
-        for (int i = 0, j = startRow; i < trainDays; i++, j++) {
-            RSITable[i][0] = RSI1[j][0];
-            RSITable[i][1] = RSI1[j][1];
-        }
-        for (int RSIFileIndex = 1, RSINow = 2; RSIFileIndex < RSIFilePath.size(); RSIFileIndex++, RSINow++) {
-            vector< vector< string > > RSI = read_data(RSIFilePath[RSIFileIndex].string());
+        if (stoi(startY) > 2009 || companyName[companyIndex].stem().string() != "V") {  //V要2009年以後，不然會錯誤
+            cout << companyName[companyIndex].stem() << endl;
+            vector< path > RSIFilePath;
+            copy(directory_iterator(companyPath[companyIndex]), directory_iterator(), back_inserter(RSIFilePath));
+            sort(RSIFilePath.begin(), RSIFilePath.end());
+            vector< vector< string > > RSI1 = read_data(RSIFilePath[0].string());
+            int totalDays = (int)RSI1.size();
+            int startRow = 0;
+            int endRow = 0;
             for (int i = 0, j = 0; i < totalDays; i++) {
-                if (j == 0 && RSI[i][0].substr(0, 4) == startY) {
+                if (j == 0 && RSI1[i][0].substr(0, 4) == startY) {
                     startRow = i;
                     j++;
                 }
-                else if (j == 1 && RSI[i][0].substr(0, 4) == endY) {
+                else if (j == 1 && RSI1[i][0].substr(0, 4) == endY) {
                     endRow = i - 1;
                     j++;
                 }
             }
+            int trainDays = endRow - startRow + 1;
+            // for (int i = 0; i < RSI1.size(); i++) {
+            //     for (int j = 0; j < RSI1[i].size(); j++) {
+            //         cout << RSI1[i][j] + "\t";
+            //     }
+            //     cout << endl;
+            // }
+            // cout << company[companyIndex].stem() << endl;
+            // cout << RSI1[startRow][0] << endl;
+            // cout << RSI1[endRow][0] << endl;
+
+            string** RSITable = new string*[trainDays];
+            for (int i = 0; i < trainDays; i++) {
+                RSITable[i] = new string[257];
+            }
             for (int i = 0, j = startRow; i < trainDays; i++, j++) {
-                RSITable[i][RSINow] = RSI[j][1];
+                RSITable[i][0] = RSI1[j][0];
+                RSITable[i][1] = RSI1[j][1];
             }
-        }
-        ofstream out;
-        out.open("RSI_table/" + companyName[companyIndex].stem().string() + "_RSI_table.csv");
-        for (int i = 0; i < trainDays; i++) {
-            for (int j = 0; j < 257; j++) {
-                out << RSITable[i][j] + ",";
+            for (int RSIFileIndex = 1, RSINow = 2; RSIFileIndex < RSIFilePath.size(); RSIFileIndex++, RSINow++) {
+                vector< vector< string > > RSI = read_data(RSIFilePath[RSIFileIndex].string());
+                for (int i = 0, j = 0; i < totalDays; i++) {
+                    if (j == 0 && RSI[i][0].substr(0, 4) == startY) {
+                        startRow = i;
+                        j++;
+                    }
+                    else if (j == 1 && RSI[i][0].substr(0, 4) == endY) {
+                        endRow = i - 1;
+                        j++;
+                    }
+                }
+                for (int i = 0, j = startRow; i < trainDays; i++, j++) {
+                    RSITable[i][RSINow] = RSI[j][1];
+                }
             }
-            out << endl;
+            ofstream out;
+            out.open("RSI_table/" + companyName[companyIndex].stem().string() + "_RSI_table.csv");
+            for (int i = 0; i < trainDays; i++) {
+                for (int j = 0; j < 257; j++) {
+                    out << RSITable[i][j] + ",";
+                }
+                out << endl;
+            }
+            out.close();
+            for (int i = 0; i < trainDays; i++) {  //V從2008才開始，在RSI2XX的時候會超過2009，delete會出錯
+                delete[] RSITable[i];
+            }
+            delete[] RSITable;
         }
-        out.close();
-        // for (int i = 0; i < trainDays; i++) { //不知道為什麼，執行delete會造成錯誤，雖然可以執行，但是記憶體會吃很多
-        //     delete[] RSITable[i];
-        // }
-        // delete[] RSITable;
     }
 }
 

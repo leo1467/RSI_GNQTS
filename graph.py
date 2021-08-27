@@ -163,10 +163,12 @@ def split_testIRR_draw():
             x = np.arange(len(df.Window))
             window = np.array(list(df.Window))
 
-            clrs = ['r' if i == 'B&H' else 'steelblue' for i in df.Window]
-            plt.bar(x, df.GNQTS, width, label='GNQTS', color=clrs)
+            clrGNQTS = ['r' if i == 'B&H' else 'steelblue' for i in df.Window]
+            clrsTrandition = ['w' if i ==
+                              'B&H' else 'darkorange' for i in df.Window]
+            plt.bar(x, df.GNQTS, width, label='GNQTS', color=clrGNQTS)
             plt.bar(x+width, df.Tradition, width,
-                    label='Tradition', color='darkorange')
+                    label='Tradition', color=clrsTrandition)
             plt.xticks(x + width / 2, df.Window)
 
             # ax = df.GNQTS.plot(kind='bar')
@@ -177,6 +179,7 @@ def split_testIRR_draw():
             ax = plt.gca()
             leg = ax.get_legend()
             leg.legendHandles[0].set_color('steelblue')
+            leg.legendHandles[1].set_color('darkorange')
 
             print(file.split('.')[0])
             plt.savefig(file.split('.')[0]+'.png',
