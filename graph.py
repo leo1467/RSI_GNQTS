@@ -26,7 +26,7 @@ def split_hold_period():
                 for file in all_filename:
                     if (targetFolder == '/testBestHold' and len(file.split('_')) == 2) or (targetFolder == '/specify' and file.split('_')[0] == 'hold' and len(file.split('_')) == 6):
                         print('spliting ' + file)
-                        year = [str(i) for i in range(2012, 2021)]
+                        year = [str(i) for i in range(2013, 2021)]
                         yIndex = []
                         yIN = -1
                         yIndex.append(int(1))
@@ -69,7 +69,7 @@ def draw_hold_period():
     now = 0
     month = ['01', '02', '03', '04', '05', '06',
              '07', '08', '09', '10', '11', '12']
-    year = [str(i) for i in range(2012, 2021)]
+    year = [str(i) for i in range(2013, 2021)]
     for targetFolder in splitTargetFolder:
         for comName in all_company:
             if now >= 0 and comName != '.DS_Store':

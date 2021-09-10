@@ -95,7 +95,7 @@
         "span": "cpp",
         "filesystem": "cpp"
     },
-    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignTrailingComments: false}",
+    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignTrailingComments: false, BreakBeforeBraces: Custom, BraceWrapping: { BeforeElse: true }}",
     "diffEditor.wordWrap": "off",
     "editor.wordWrap": "on",
 }
