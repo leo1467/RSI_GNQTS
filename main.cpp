@@ -30,7 +30,7 @@ using namespace filesystem;
 #define OVERSOLD_BIT 7
 #define OVERBOUGHT_BIT 7
 
-int mode = 0;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
+int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -41,7 +41,7 @@ string _train_end_date = "2020-12-31";
 string _test_start_y = "2012";
 string _test_end_y = "2021";
 int _test_length = stoi(_test_end_y) - stoi(_test_start_y);
-string _sliding_windows[] = {/* "A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "10D5", "5D2" */ /* , "5D1" */ "3D2"};
+string _sliding_windows[] = {"A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5"};
 
 string _BH_company = "AAPL";
 string _BH_start_day = "2011-01-03";  //also specify
@@ -1153,26 +1153,36 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
     double returnRate = 0;
     vector<string> tradeRecord;
     for (int i = startingRow; i <= endingRow; i++) {
-        holdPeriod << daysTable[i] + "," << priceTable[i] << ",";
-        if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
+        holdPeriod << daysTable[i] + ",";
+        if ((period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) || (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && startingRow == endingRow)) {  //買入訊號出現且無持股
             buyNum++;
-            stockHold = remain / priceTable[i];
-            remain -= (double)stockHold * priceTable[i];
-            tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            holdPeriod << priceTable[i] << endl;
+            if (i == startingRow) {
+                i = i - 1;
+                stockHold = remain / priceTable[i];
+                remain -= (double)stockHold * priceTable[i];
+                tradeRecord.push_back("buy," + daysTable[i + 1] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i + 1][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+                holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
+                i += 1;
+            }
+            else {
+                stockHold = remain / priceTable[i];
+                remain -= (double)stockHold * priceTable[i];
+                tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+                holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
+            }
         }
         else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
             sellNum++;
             remain += (double)stockHold * priceTable[i];
             stockHold = 0;
             tradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
         }
         else if (stockHold != 0) {
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
         }
         else if (stockHold == 0) {
-            holdPeriod << endl;
+            holdPeriod << priceTable[i] << endl;
         }
     }
     returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
@@ -1621,10 +1631,17 @@ void remove_file() {
     vector<path> getCompany;
     copy(directory_iterator(_output_path), directory_iterator(), back_inserter(getCompany));
     sort(getCompany.begin(), getCompany.end());
+    string toRemove[] = {"5D13D2", "5D2"};
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
-            remove_all(getCompany[i].string() + "/testTradition/5D1");
-            remove_all(getCompany[i].string() + "/test/10D10");
+            for (int j = 0; j < sizeof(toRemove) / sizeof(toRemove[0]); j++) {
+                remove_all(getCompany[i].string() + "/train/" + toRemove[j]);
+                remove_all(getCompany[i].string() + "/test/" + toRemove[j]);
+                remove_all(getCompany[i].string() + "/testTradition/" + toRemove[j]);
+                remove(getCompany[i].string() + "/train/" + toRemove[j]);
+                remove(getCompany[i].string() + "/test/" + toRemove[j]);
+                remove(getCompany[i].string() + "/testTradition/" + toRemove[j]);
+            }
         }
     }
 }
