@@ -1403,10 +1403,16 @@ void cal_test_IRR() {
     IRROut.open("test_IRR.csv");  //所有公司所有視窗的年化報酬率都輸出到這
     struct windowIRR {  //建立新的資料形態用來裝滑動視窗跟報酬率
         string window;
-        double originIRR;
+        double GNQTSIRR;
         double traditionIRR;
+        int rank;
     } tmp;
+    struct rank {
+        string companyName;
+        vector<int> windowRank;
+    };
     int companyNum = (int)company.size();
+    vector<rank> GNQTSRank, traditionRank;
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
         vector<windowIRR> IRRList;
         cout << "=====" + company[whichCompany] + "=====" << endl;
@@ -1439,13 +1445,13 @@ void cal_test_IRR() {
                     }
                 }
                 tmp.window = window[windowIndex];
-                tmp.originIRR = pow(totalRate[0], (double)1 / _test_length) - 1;  //計算年化報酬;
+                tmp.GNQTSIRR = pow(totalRate[0], (double)1 / _test_length) - 1;  //計算年化報酬;
                 tmp.traditionIRR = pow(totalRate[1], (double)1 / _test_length) - 1;
                 totalRate[0]--;
                 totalRate[1]--;
                 // oneWindowRate.push_back(to_string(TotalRate));
                 IRRList.push_back(tmp);
-                RoROut << fixed << setprecision(10) << ",,,,,," + window[windowIndex] + "," << totalRate[0] << "," << tmp.originIRR << endl;
+                RoROut << fixed << setprecision(10) << ",,,,,," + window[windowIndex] + "," << totalRate[0] << "," << tmp.GNQTSIRR << endl;
                 traditionOut << fixed << setprecision(10) << ",,,,,," + window[windowIndex] + "," << totalRate[1] << "," << tmp.traditionIRR << endl;
             }
         }
@@ -1468,8 +1474,8 @@ void cal_test_IRR() {
                 break;
             }
         }
-        tmp.originIRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
-        tmp.traditionIRR = tmp.originIRR;
+        tmp.GNQTSIRR = pow(cal_BH(company[whichCompany], testStartDate, testEndDate) + 1, (double)1 / _test_length) - 1;
+        tmp.traditionIRR = tmp.GNQTSIRR;
         IRRList.push_back(tmp);
 
         //=======這邊是A2A的，錯誤
@@ -1491,12 +1497,58 @@ void cal_test_IRR() {
         //     }
         // }
         //======
+        //==============================================================================================
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
-            return a.originIRR > b.originIRR;
+            return a.GNQTSIRR > b.GNQTSIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].originIRR << "," << IRRList[i].traditionIRR << endl;
+            IRRList[i].rank = i + 1;
         }
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.window < b.window;
+        });
+        rank tmpRank;
+        tmpRank.companyName = company[whichCompany];
+        for (int i = 0; i < IRRList.size(); i++) {
+            tmpRank.windowRank.push_back(IRRList[i].rank);
+        }
+        GNQTSRank.push_back(tmpRank);
+        //==============================================================================================
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.traditionIRR > b.traditionIRR;
+        });
+        for (int i = 0; i < IRRList.size(); i++) {
+            IRRList[i].rank = i + 1;
+        }
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.window < b.window;
+        });
+        rank tmpRank0;
+        tmpRank0.companyName = company[whichCompany];
+        for (int i = 0; i < IRRList.size(); i++) {
+            tmpRank0.windowRank.push_back(IRRList[i].rank);
+        }
+        traditionRank.push_back(tmpRank0);
+        //==============================================================================================
+        for (int i = 0; i < IRRList.size(); i++) {
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR << "," << IRRList[i].traditionIRR << "," << IRRList[i].rank << endl;
+        }
+    }
+    IRROut << "GNQTS window rank" << endl;
+    for (int i = 0; i < GNQTSRank.size(); i++) {
+        IRROut << GNQTSRank[i].companyName + ",";
+        for (int j = 0; j < GNQTSRank[i].windowRank.size(); j++) {
+            IRROut << GNQTSRank[i].windowRank[j] << ",";
+        }
+        IRROut << endl;
+    }
+    IRROut << "tradition window rank" << endl;
+    for (int i = 0; i < traditionRank.size(); i++) {
+        IRROut << traditionRank[i].companyName + ",";
+        for (int j = 0; j < traditionRank[i].windowRank.size(); j++) {
+            IRROut << traditionRank[i].windowRank[j] << ",";
+        }
+        IRROut << endl;
     }
     IRROut.close();
 }
