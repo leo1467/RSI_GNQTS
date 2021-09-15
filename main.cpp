@@ -30,7 +30,7 @@ using namespace filesystem;
 #define OVERSOLD_BIT 7
 #define OVERBOUGHT_BIT 7
 
-int mode = 0;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
+int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -41,7 +41,7 @@ string _train_end_date = "2020-12-31";
 string _test_start_y = "2012";
 string _test_end_y = "2021";
 int _test_length = stoi(_test_end_y) - stoi(_test_start_y);
-string _sliding_windows[] = {/* "A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "10D5", "5D2" */ /* , "5D1" */ "3D2"};
+string _sliding_windows[] = {"A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5"};
 
 string _BH_company = "AAPL";
 string _BH_start_day = "2011-01-03";  //also specify
@@ -1489,6 +1489,22 @@ void cal_test_IRR() {
         //======
         //==============================================================================================
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.traditionIRR > b.traditionIRR;
+        });
+        for (int i = 0; i < IRRList.size(); i++) {
+            IRRList[i].rank = i + 1;
+        }
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
+            return a.window < b.window;
+        });
+        rank tmpRank0;
+        tmpRank0.companyName = company[whichCompany];
+        for (int i = 0; i < IRRList.size(); i++) {
+            tmpRank0.windowRank.push_back(IRRList[i].rank);
+        }
+        traditionRank.push_back(tmpRank0);
+        //==============================================================================================
+        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
             return a.GNQTSIRR > b.GNQTSIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
@@ -1505,41 +1521,39 @@ void cal_test_IRR() {
         GNQTSRank.push_back(tmpRank);
         //==============================================================================================
         sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
-            return a.traditionIRR > b.traditionIRR;
+            return a.GNQTSIRR > b.GNQTSIRR;
         });
-        for (int i = 0; i < IRRList.size(); i++) {
-            IRRList[i].rank = i + 1;
-        }
-        sort(IRRList.begin(), IRRList.end(), [](const windowIRR& a, const windowIRR& b) {
-            return a.window < b.window;
-        });
-        rank tmpRank0;
-        tmpRank0.companyName = company[whichCompany];
-        for (int i = 0; i < IRRList.size(); i++) {
-            tmpRank0.windowRank.push_back(IRRList[i].rank);
-        }
-        traditionRank.push_back(tmpRank0);
-        //==============================================================================================
         for (int i = 0; i < IRRList.size(); i++) {
             IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR << "," << IRRList[i].traditionIRR << "," << IRRList[i].rank << endl;
         }
     }
-    IRROut << "GNQTS window rank" << endl;
+    vector<string> windowSort(_sliding_windows + 1, _sliding_windows + (sizeof(_sliding_windows) / sizeof(_sliding_windows[0])));
+    windowSort.push_back("B&H");
+    sort(windowSort.begin(), windowSort.end());
+    ofstream rankOut;
+    rankOut.open("windowRank.csv");
+    rankOut << "GNQTS window rank" << endl;
+    rankOut << ",";
+    for (int i = 0; i < windowSort.size(); i++) {
+        rankOut << windowSort[i] + ",";
+    }
+    rankOut << endl;
     for (int i = 0; i < GNQTSRank.size(); i++) {
-        IRROut << GNQTSRank[i].companyName + ",";
+        rankOut << GNQTSRank[i].companyName + ",";
         for (int j = 0; j < GNQTSRank[i].windowRank.size(); j++) {
-            IRROut << GNQTSRank[i].windowRank[j] << ",";
+            rankOut << GNQTSRank[i].windowRank[j] << ",";
         }
-        IRROut << endl;
+        rankOut << endl;
     }
-    IRROut << "tradition window rank" << endl;
+    rankOut << "tradition window rank" << endl;
     for (int i = 0; i < traditionRank.size(); i++) {
-        IRROut << traditionRank[i].companyName + ",";
+        rankOut << traditionRank[i].companyName + ",";
         for (int j = 0; j < traditionRank[i].windowRank.size(); j++) {
-            IRROut << traditionRank[i].windowRank[j] << ",";
+            rankOut << traditionRank[i].windowRank[j] << ",";
         }
-        IRROut << endl;
+        rankOut << endl;
     }
+    rankOut.close();
     IRROut.close();
 }
 
@@ -1895,7 +1909,7 @@ void make_RSI_table() {
             }
         }
         ofstream out;
-        out.open("RSI_table_2009-07/" + companyName[companyIndex].stem().string() + "_RSI_table.csv");
+        out.open("RSI_table/" + companyName[companyIndex].stem().string() + "_RSI_table.csv");
         for (int i = 0; i < trainDays; i++) {
             for (int j = 0; j < 257; j++) {
                 out << RSITable[i][j] + ",";
