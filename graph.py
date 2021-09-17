@@ -44,7 +44,6 @@ def split_hold_period():
                         csvfile = open(''.join(file), 'r').readlines()
                         for y in year:
                             for row in range(len(csvfile)):
-                                print(row)
                                 yIN += 1
                                 if y == csvfile[yIN].split('-')[0]:
                                     yIndex.append(int(yIN))
@@ -66,10 +65,11 @@ def split_hold_period():
 
 
 def draw_hold_period():
+    os.chdir(oowd)
     now = 0
     month = ['01', '02', '03', '04', '05', '06',
              '07', '08', '09', '10', '11', '12']
-    year = [str(i) for i in range(2013, 2021)]
+    year = [str(i) for i in range(2012, 2021)]
     for targetFolder in splitTargetFolder:
         for comName in all_company:
             if now >= 0 and comName != '.DS_Store':
@@ -189,6 +189,9 @@ def split_testIRR_draw():
 
 def main():
     split_testIRR_draw()
+
+    # split_hold_period()
+    # draw_hold_period()
 
 
 main()

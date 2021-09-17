@@ -36,13 +36,14 @@ double _delta = 0.003;
 int _exp_times = 50;
 int _generation = 1000;
 
-string _train_start_date = "2010-01-04";
-string _train_end_date = "2020-12-31";
 string _test_start_y = "2012";
 string _test_end_y = "2021";
 int _test_length = stoi(_test_end_y) - stoi(_test_start_y);
-string _sliding_windows[] = {"A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5"};
+string _sliding_windows[] = {"A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5", "YY2H", "YY2Q", "YY2M"};
+string _slidingWindowsEX[] = {"A2A", "24M12", "18M12", "12M12", "12M6", "12M3", "12M1", "H#", "6M6", "6M3", "6M1", "Q#", "3M3", "3M1", "M#", "1M1", "15D5", "10D5", "5D5", "24M6", "24M3", "24M1"};
 
+string _train_start_date = "2010-01-04";  //不重要
+string _train_end_date = "2020-12-31";  //不重要
 string _BH_company = "AAPL";
 string _BH_start_day = "2011-01-03";  //also specify
 string _BH_end_day = "2020-12-31";  //also specify
@@ -396,261 +397,6 @@ void update_the_best() {
     }
 }
 
-// int find_train_end(int table_size, string mon, int& train_end_row, int to_jump, string* daysTable) {
-//     int skip = 0;
-//     for (int i = table_size - 1; i >= 0; i--) {
-//         if (daysTable[i].substr(5, 2) != mon) {
-//             skip++;
-//             mon = daysTable[i].substr(5, 2);
-//             if (skip == to_jump) {
-//                 train_end_row = i;
-//                 break;
-//             }
-//             i -= 15;
-//         }
-//     }
-//     return skip;
-// }
-
-// int find_train_start(int test_s_row, string mon, int& train_start_row, string& start, string& end, int to_jump, string* daysTable) {
-//     int skip = 0;
-//     if (to_jump == 13) {  //給Y2Y用
-//         train_start_row = 0;
-//         start = daysTable[0].substr(5, 2);
-//         end = daysTable[test_s_row].substr(5, 2);
-//     } else {
-//         for (int i = test_s_row; i >= -1; i--) {
-//             if (daysTable[i].substr(5, 2) != mon) {
-//                 skip++;
-//                 mon = daysTable[i].substr(5, 2);
-//                 if (skip == to_jump) {
-//                     train_start_row = i + 1;
-//                     start = daysTable[i + 1].substr(5, 2);
-//                     end = daysTable[test_s_row].substr(5, 2);
-//                     break;
-//                 }
-//                 i -= 15;
-//             }
-//         }
-//     }
-//     return to_jump;
-// }
-
-// void find_window_start_end(int table_size, string windowUse, int sliding_type_int, string* daysTable, vector<int>& interval_table) {
-//     string M[] = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
-//     int test_s_row = 0;  //記錄測試期開始row
-//     for (int i = 230; i < 300; i++) {  //找出測試期開始的row
-//         if (daysTable[i].substr(0, 4) == _test_start_y) {
-//             test_s_row = i;
-//             break;
-//         }
-//     }
-//     int train_start_row = 0;  //記錄訓練期開始的row
-//     int train_end_row = 0;  //記錄訓練期結束的row
-//     if (sliding_type_int == 2) {  //判斷year-on-year
-//         train_start_row = 0;
-//         string train_end_y = to_string(stoi(_train_end_date.substr(0, 4)) - 1);
-//         for (int i = table_size - 230; i > 0; i--) {
-//             if (daysTable[i].substr(0, 4) == train_end_y) {
-//                 train_end_row = i;
-//                 break;
-//             }
-//         }
-//         switch (windowUse[0]) {  //做H*
-//             case 'H': {
-//                 interval_table.push_back(train_start_row);
-//                 string end_H = M[6];
-//                 for (int i = 97, j = 6; i < train_end_row; i++) {
-//                     if (daysTable[i].substr(5, 2) == end_H) {
-//                         interval_table.push_back(i - 1);
-//                         interval_table.push_back(i);
-//                         end_H = M[(j += 6) % 12];
-//                         i += 97;
-//                     }
-//                 }
-//                 interval_table.push_back(train_end_row);
-//                 break;
-//             }
-//             case 'Q': {  //做Q*
-//                 interval_table.push_back(train_start_row);
-//                 string end_Q = M[3];
-//                 for (int i = 55, j = 3; i < train_end_row; i++) {
-//                     if (daysTable[i].substr(5, 2) == end_Q) {
-//                         interval_table.push_back(i - 1);
-//                         interval_table.push_back(i);
-//                         end_Q = M[(j += 3) % 12];
-//                         i += 55;
-//                     }
-//                 }
-//                 interval_table.push_back(train_end_row);
-//                 break;
-//             }
-//             case 'M': {  //做M*
-//                 interval_table.push_back(train_start_row);
-//                 string end_H = M[1];
-//                 for (int i = 15, j = 1; i < train_end_row; i++) {
-//                     if (daysTable[i].substr(5, 2) == end_H) {
-//                         interval_table.push_back(i - 1);
-//                         interval_table.push_back(i);
-//                         end_H = M[++j % 12];
-//                         i += 15;
-//                     }
-//                 }
-//                 interval_table.push_back(train_end_row);
-//                 break;
-//             }
-//         }
-//     } else {
-//         string mon = _train_start_date.substr(5, 2);  //記錄目前iterate到什麼月份
-//         string start;  //記錄sliding window開始月份
-//         string end;  //記錄sliding window結束月份
-//         int s_jump_e = 0;  //從period頭要找period尾
-//         int e_jump_s = 0;  //從period尾要找下一個period頭
-//         int skip = 0;  //M[]要跳幾個月份
-//         switch (windowUse[0]) {  //看是什麼開頭，找出第一個訓練開始的row以及開始月份及結束月份
-//             case 'Y': {
-//                 s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 13, daysTable) - 1;
-//                 break;
-//             }
-//             case 'H': {
-//                 s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 7, daysTable) - 1;
-//                 break;
-//             }
-//             case 'Q': {
-//                 s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 4, daysTable) - 1;
-//                 break;
-//             }
-//             case 'M': {
-//                 s_jump_e = find_train_start(test_s_row, mon, train_start_row, start, end, 2, daysTable) - 1;
-//                 break;
-//             }
-//         }
-//         switch (windowUse[2]) {  //看是什麼結尾，找出最後一個訓練開始的row
-//             case 'Y': {
-//                 skip = find_train_end(table_size, mon, train_end_row, 13, daysTable) - 1;
-//                 break;
-//             }
-//             case 'H': {
-//                 skip = find_train_end(table_size, mon, train_end_row, 7, daysTable) - 1;
-//                 break;
-//             }
-//             case 'Q': {
-//                 skip = find_train_end(table_size, mon, train_end_row, 4, daysTable) - 1;
-//                 break;
-//             }
-//             case 'M': {
-//                 skip = find_train_end(table_size, mon, train_end_row, 2, daysTable) - 1;
-//                 break;
-//             }
-//         }
-//         int train_s_M = 0, train_e_M = 12;  //記錄第一個訓練期開頭及結尾在M[]的index
-//         for (int i = 0; i < 12; i++) {
-//             if (start == M[i]) {
-//                 train_s_M = i;
-//                 break;
-//             }
-//         }
-//         if (windowUse[0] == windowUse[2]) {  //判斷從period尾要找下一個period頭需要跳多少
-//             e_jump_s = 1;
-//         } else if (windowUse[2] == 'M') {
-//             e_jump_s = s_jump_e - 1;
-//         } else if (windowUse[2] == 'Q') {
-//             e_jump_s = s_jump_e - 3;
-//         } else {
-//             e_jump_s = 6;
-//         }
-//         interval_table.push_back(train_start_row);
-//         for (int i = train_start_row + s_jump_e * 18, k = 1; i < train_end_row; i++) {
-//             if (k % 2 == 1 && daysTable[i].substr(5, 2) == end) {
-//                 interval_table.push_back(i - 1);
-//                 start = M[(train_s_M += skip) % 12];
-//                 end = M[(train_e_M += skip) % 12];
-//                 i -= e_jump_s * 24;
-//                 if (i < 0) {
-//                     i = 0;
-//                 }
-//                 k++;
-//             } else if (k % 2 == 0 && daysTable[i].substr(5, 2) == start) {
-//                 interval_table.push_back(i);
-//                 i += s_jump_e * 18;
-//                 k++;
-//             }
-//         }
-//         interval_table.push_back(train_end_row);
-//     }
-// }
-
-// void find_YY2Y_window(int tableSize, string windowUse, int slideType, string* daysTable, vector<int>& intervalTable) {
-//     int testStartRow = -1;
-//     for (int i = 0; i < tableSize; i++) {
-//         if (daysTable[i].substr(0, 4) == _test_start_y) {
-//             testStartRow = i;
-//             break;
-//         }
-//     }
-//     if (testStartRow == -1) {
-//         cout << "can not find " + windowUse + " testStartRow" << endl;
-//         exit(1);
-//     }
-//     int trainStartYear = stoi(_train_start_date.substr(0, 4));  //這邊的_train_start_date不用管，等一下會統一訓練期的寫法
-//     int trainEndYear = trainStartYear + 2;
-//     vector<int> startRow;
-//     vector<int> endRow;
-//     for (int i = 0; startRow.size() < _test_length; i++) {
-//         if (trainStartYear == stoi(daysTable[i].substr(0, 4))) {
-//             startRow.push_back(i);
-//             trainStartYear++;
-//         }
-//     }
-//     for (int i = 0; endRow.size() < _test_length; i++) {
-//         if (trainEndYear == stoi(daysTable[i].substr(0, 4))) {
-//             endRow.push_back(i - 1);
-//             trainEndYear++;
-//         }
-//     }
-//     for (int i = 0; i < startRow.size(); i++) {
-//         intervalTable.push_back(startRow[i]);
-//         intervalTable.push_back(endRow[i]);
-//         // cout << daysTable[startRow[i]] << endl;
-//     }
-// }
-
-// void find_YH2Y_window(int tableSize, string windowUse, int slideType, string* daysTable, vector<int>& intervalTable) {
-//     int testStartRow = -1;
-//     for (int i = 0; i < tableSize; i++) {
-//         if (daysTable[i].substr(5, 2) == "07") {
-//             testStartRow = i;
-//             break;
-//         }
-//     }
-//     if (testStartRow == -1) {
-//         cout << "can not find " + windowUse + " testStartRow" << endl;
-//         exit(1);
-//     }
-//     int trainStartYear = stoi(_train_start_date.substr(0, 4));
-//     int trainEndYear = trainStartYear + 2;
-//     vector<int> startRow;
-//     vector<int> endRow;
-//     for (int i = 0; startRow.size() < _test_length; i++) {
-//         if (trainStartYear == stoi(daysTable[i].substr(0, 4)) && daysTable[i].substr(5, 2) == "07") {
-//             startRow.push_back(i);
-//             trainStartYear++;
-//             i += 30;
-//         }
-//     }
-//     for (int i = 0; endRow.size() < _test_length; i++) {
-//         if (trainEndYear == stoi(daysTable[i].substr(0, 4))) {
-//             endRow.push_back(i - 1);
-//             trainEndYear++;
-//         }
-//     }
-//     for (int i = 0; i < startRow.size(); i++) {
-//         intervalTable.push_back(startRow[i]);
-//         intervalTable.push_back(endRow[i]);
-//         // cout << daysTable[startRow[i]] << endl;
-//     }
-// }
-
 vector<string> find_train_type(string inputString, char delimiter1, char delimiter2) {
     string segment;
     vector<string> seglist;
@@ -785,74 +531,46 @@ void find_train_start_end(int trainPeriodLength, int intervalNum, int testPeriod
     }
 }
 
-void find_interval(int table_size, int slide, string* daysTable, vector<int>& interval_table) {  //將A2A跟其他分開
-    cout << "looking for interval " + _sliding_windows[slide] << endl;
-    // if (_sliding_windows[slide] == "A2A") {  //直接給A2A的起始與結束row
-    //     interval_table.push_back(0);
-    //     interval_table.push_back(table_size - 1);
-    // } else if (_sliding_windows[slide] == "YY2Y") {
-    //     find_YY2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
-    // } else if (_sliding_windows[slide] == "YH2Y") {
-    //     find_YH2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
-    // } else if (isalpha(_sliding_windows[slide][0])) {  //開始找普通滑動視窗的起始與結束
-    //     find_window_start_end(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
-    // } else if (!isalpha(_sliding_windows[slide][0])) {
-    //     find_D_window(table_size, _sliding_windows[slide], daysTable, interval_table);
-    // }
+vector<string> find_train_type(string inputString, char& delimiter) {
+    string segment;
+    vector<string> seglist;
+    stringstream toCut(inputString);
+    if (inputString.find('M') != string::npos) {
+        delimiter = 'M';
+    }
+    else {
+        delimiter = 'D';
+    }
+    while (getline(toCut, segment, delimiter)) {
+        seglist.push_back(segment);
+    }
+    return seglist;
+}
 
-    if (_sliding_windows[slide] == "A2A") {  //直接給A2A的起始與結束row
+void find_interval(int table_size, int slide, string* daysTable, vector<int>& interval_table) {  //將A2A跟其他分開
+    cout << "looking for interval " + _sliding_windows[slide] + "=" + _slidingWindowsEX[slide] << endl;
+    if (_slidingWindowsEX[slide] == "A2A") {
         interval_table.push_back(0);
         interval_table.push_back(table_size - 1);
     }
-    else if (_sliding_windows[slide] == "YY2Y") {
-        // find_YY2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
-        find_train_start_end(24, _test_length, 12, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "YH2Y") {
-        // find_YH2Y_window(table_size, _sliding_windows[slide], (int)_sliding_windows[slide].size(), daysTable, interval_table);
-        find_train_start_end(18, _test_length, 12, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Y2Y") {  //開始找普通滑動視窗的起始與結束
-        find_train_start_end(12, _test_length, 12, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Y2H") {
-        find_train_start_end(12, _test_length * 2, 6, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Y2Q") {
-        find_train_start_end(12, _test_length * 4, 3, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Y2M") {
-        find_train_start_end(12, _test_length * 12, 1, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "H#") {
+    else if (_slidingWindowsEX[slide] == "H#") {
         find_train_start_end(6, _test_length * 2, 6, slide, table_size, daysTable, interval_table);
     }
-    else if (_sliding_windows[slide] == "H2H") {
-        find_train_start_end(6, _test_length * 2, 6, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "H2Q") {
-        find_train_start_end(6, _test_length * 4, 3, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "H2M") {
-        find_train_start_end(6, _test_length * 12, 1, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Q#") {
+    else if (_slidingWindowsEX[slide] == "Q#") {
         find_train_start_end(3, _test_length * 4, 3, slide, table_size, daysTable, interval_table);
     }
-    else if (_sliding_windows[slide] == "Q2Q") {
-        find_train_start_end(3, _test_length * 4, 3, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "Q2M") {
-        find_train_start_end(3, _test_length * 12, 1, slide, table_size, daysTable, interval_table);
-    }
-    else if (_sliding_windows[slide] == "M#") {
+    else if (_slidingWindowsEX[slide] == "M#") {
         find_train_start_end(1, _test_length * 12, 1, slide, table_size, daysTable, interval_table);
     }
-    else if (_sliding_windows[slide] == "M2M") {
-        find_train_start_end(1, _test_length * 12, 1, slide, table_size, daysTable, interval_table);
-    }
-    else if (!isalpha(_sliding_windows[slide][0])) {
-        find_D_window(table_size, _sliding_windows[slide], daysTable, interval_table);
+    else {
+        char delimiter;
+        vector<string> trainAndTest = find_train_type(_slidingWindowsEX[slide], delimiter);
+        if (delimiter == 'M') {
+            find_train_start_end(stoi(trainAndTest[0]), _test_length * (12 / stoi(trainAndTest[1])), stoi(trainAndTest[1]), slide, table_size, daysTable, interval_table);
+        }
+        else if (delimiter == 'D') {
+            find_D_window(table_size, _sliding_windows[slide], daysTable, interval_table);
+        }
     }
     for (int i = 0; i < interval_table.size(); i += 2) {
         cout << daysTable[interval_table[i]] + "~" + daysTable[interval_table[i + 1]] << endl;
@@ -1524,7 +1242,7 @@ void cal_test_IRR() {
             return a.GNQTSIRR > b.GNQTSIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR << "," << IRRList[i].traditionIRR << "," << IRRList[i].rank << endl;
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR << "," << IRRList[i].traditionIRR << endl;
         }
     }
     vector<string> windowSort(_sliding_windows + 1, _sliding_windows + (sizeof(_sliding_windows) / sizeof(_sliding_windows[0])));
@@ -1689,8 +1407,8 @@ void remove_file() {
     sort(getCompany.begin(), getCompany.end());
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
-            remove_all(getCompany[i].string() + "/testTradition/5D1");
-            remove_all(getCompany[i].string() + "/test/10D10");
+            remove_all(getCompany[i].string() + "/testBestHold");
+            // remove_all(getCompany[i].string() + "/test/10D10");
         }
     }
 }
@@ -1713,7 +1431,7 @@ void find_best_hold(string train_or_test) {
             toPush.erase(remove(toPush.begin(), toPush.end(), '='), toPush.end());
             companyBestPeriod.push_back(toPush);
             for (int j = 1; j < 10; j++) {
-                if (all_IRR[i + j][0] != "B&H" && isalpha(all_IRR[i + j][0].front())) {
+                if (all_IRR[i + j][0] != "B&H" /* && isalpha(all_IRR[i + j][0].front()) */) {
                     companyBestPeriod.push_back(all_IRR[i + j][0]);
                     companyBestPeriod.push_back(all_IRR[i + j][1]);
                     break;
