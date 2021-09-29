@@ -871,26 +871,34 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
     double returnRate = 0;
     vector<string> tradeRecord;
     for (int i = startingRow; i <= endingRow; i++) {
-        holdPeriod << daysTable[i] + "," << priceTable[i] << ",";
-        if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && i < endingRow) {  //買入訊號出現且無持股
+        holdPeriod << daysTable[i] + ",";
+        if (period != 0 && RSITable[i][period] <= buySignal && stockHold == 0 && (i < endingRow || i == startingRow)) {  //買入訊號出現且無持股
             buyNum++;
-            stockHold = remain / priceTable[i];
-            remain -= (double)stockHold * priceTable[i];
-            tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            holdPeriod << priceTable[i] << endl;
+            if (i == startingRow) {
+                stockHold = remain / priceTable[i - 1];
+                remain -= (double)stockHold * priceTable[i - 1];
+                tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i - 1]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i - 1] * stockHold));
+                holdPeriod << priceTable[i - 1] << "," << priceTable[i - 1] << endl;
+            }
+            else {
+                stockHold = remain / priceTable[i];
+                remain -= (double)stockHold * priceTable[i];
+                tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
+                holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
+            }
         }
         else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
             sellNum++;
             remain += (double)stockHold * priceTable[i];
             stockHold = 0;
             tradeRecord.push_back("sell," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
         }
         else if (stockHold != 0) {
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
         }
         else if (stockHold == 0) {
-            holdPeriod << endl;
+            holdPeriod << priceTable[i] << endl;
         }
     }
     returnRate = (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
