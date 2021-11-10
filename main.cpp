@@ -30,7 +30,7 @@ using namespace filesystem;
 #define OVERSOLD_BIT 7
 #define OVERBOUGHT_BIT 7
 
-int mode = 4;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
+int mode = 0;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -39,8 +39,8 @@ int _generation = 1000;
 string _test_start_y = "2012";
 string _test_end_y = "2021";
 int _test_length = stoi(_test_end_y) - stoi(_test_start_y);
-string _sliding_windows[] = {"A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5", "YY2H", "YY2Q", "YY2M"};
-string _slidingWindowsEX[] = {"A2A", "24M12", "18M12", "12M12", "12M6", "12M3", "12M1", "H#", "6M6", "6M3", "6M1", "Q#", "3M3", "3M1", "M#", "1M1", "15D5", "10D5", "5D5", "24M6", "24M3", "24M1"};
+string _sliding_windows[] = {/* "A2A", "YY2Y", "YH2Y", "Y2Y", "Y2H", "Y2Q", "Y2M", "H#", "H2H", "H2Q", "H2M", "Q#", "Q2Q", "Q2M", "M#", "M2M", "15D5", "10D5", "5D5", "YY2H", "YY2Q", "YY2M", "YYY2Y", "5D4", "5D3", "5D2", "4D3", "4D2", "3D2", "20D5", "10D10", "15D15", "20D20", "20D15", "20D10", "15D10", */ "4W4", "4W3", "4W2", "4W1", "3W3", "3W2", "3W1", "2W2", "2W1", "1W1"};
+string _slidingWindowsEX[] = {/* "A2A", "24M12", "18M12", "12M12", "12M6", "12M3", "12M1", "H#", "6M6", "6M3", "6M1", "Q#", "3M3", "3M1", "M#", "1M1", "15D5", "10D5", "5D5", "24M6", "24M3", "24M1", "36M12", "5D4", "5D3", "5D2", "4D3", "4D2", "3D2", "20D5", "10D10", "15D15", "20D20", "20D15", "20D10", "15D10", */ "4W4", "4W3", "4W2", "4W1", "3W3", "3W2", "3W1", "2W2", "2W1", "1W1"};
 
 string _train_start_date = "2010-01-04";  //不重要
 string _train_end_date = "2020-12-31";  //不重要
@@ -450,6 +450,131 @@ void find_D_window(int tableSize, string windowUse, string* daysTable, vector<in
     }
 }
 
+int cal_weekday(string date) {
+    int y = stoi(date.substr(0, 4));
+    int m = stoi(date.substr(5, 2)) - 1;
+    int d = stoi(date.substr(8, 2));
+    tm time_in = {0, 0, 0, d, m, y - 1900};
+    time_t time_temp = mktime(&time_in);
+    const tm* time_out = localtime(&time_temp);
+    return time_out->tm_wday;
+}
+
+void find_W_window(int tableSize, string windowUse, string* daysTable, vector<int>& intervalTable) {
+    vector<int> startRow;
+    vector<int> endRow;
+    int testStartRow = -1;
+    int testEndRow = -1;
+    for (int i = 0; i < tableSize; i++) {
+        if (daysTable[i].substr(0, 4) == _test_start_y) {
+            testStartRow = i;
+            break;
+        }
+    }
+    for (int i = 0; i < tableSize; i++) {
+        if (daysTable[i].substr(0, 4) == _test_end_y) {
+            testEndRow = i - 1;
+            break;
+        }
+    }
+    int trainPeriodLength = stoi(find_train_type(windowUse, 'W', '!')[0]);
+    int testPeriodLength = stoi(find_train_type(windowUse, 'W', '!')[1]);
+    int trainStartRow{-1};
+    int trainEndRow = testStartRow - 1;
+    int weekDayPre{-1};
+    int weekDayNow{-1};
+    for (int i = testStartRow - 1, j = 0; j < trainPeriodLength; i--) {
+        weekDayPre = cal_weekday(daysTable[i - 1]);
+        weekDayNow = cal_weekday(daysTable[i]);
+        if (weekDayNow < weekDayPre ||
+            stoi(daysTable[i].substr(8, 2)) - stoi(daysTable[i - 1].substr(8, 2)) >= 7) {
+            j++;
+            if (j == trainPeriodLength) {
+                trainStartRow = i;
+            }
+        }
+    }
+    // int testStartEndRow{-1};
+    // for (int i = testEndRow, j = 0; j < 1; i--) {
+    //     weekDayPre =cal_weekday(daysTable[i - 1]);
+    //     weekDayNow =cal_weekday(daysTable[i]);
+    //     if (weekDayNow < weekDayPre ||
+    //         stoi(daysTable[i].substr(8, 2)) - stoi(daysTable[i - 1].substr(8, 2)) >= 7) {
+    //         j++;
+    //         if (j == 1) {
+    //             testStartEndRow = i;
+    //         }
+    //     }
+    // }
+    //=================================================下面開始不正確
+    //=================================================找每個訓練開始row
+    startRow.push_back(trainStartRow);
+    for (int i = trainStartRow, j = 0; i <= testEndRow + 1; i++) {
+        weekDayPre = cal_weekday(daysTable[i - 1]);
+        weekDayNow = cal_weekday(daysTable[i]);
+        if (weekDayNow <= weekDayPre ||
+            stoi(daysTable[i].substr(8, 2)) - stoi(daysTable[i - 1].substr(8, 2)) >= 7 ||
+            stoi(daysTable[i].substr(8, 2)) < stoi(daysTable[i - 1].substr(8, 2)) && stoi(daysTable[i].substr(8, 2)) + 30 - stoi(daysTable[i - 1].substr(8, 2)) >= 7) {
+            j++;
+            if (j == testPeriodLength + 1 /*  && i != testEndRow + 1 */) {
+                if (testEndRow - i > trainPeriodLength * 5) {
+                    startRow.push_back(i);
+                    i--;
+                    j = 0;
+                }
+            }
+            // if (i == testEndRow + 1 && j <= testPeriodLength) {
+            //     cout << "POP" << endl;
+            //     cout << daysTable[startRow.back()] << endl;
+            //     startRow.pop_back();
+            // }
+        }
+    }
+    //=================================================找每個訓練結束row
+    // int weekDayAft{-1};
+    // endRow.push_back(trainEndRow);
+    // for (int i = trainEndRow, j = 0; i < testStartEndRow; i++) {
+    //     weekDayNow =cal_weekday(daysTable[i]);
+    //     weekDayAft =cal_weekday(daysTable[i + 1]);
+    //     if (weekDayNow >= weekDayAft ||
+    //         stoi(daysTable[i + 1].substr(8, 2)) - stoi(daysTable[i].substr(8, 2)) >= 7 ||
+    //         stoi(daysTable[i + 1].substr(8, 2)) < stoi(daysTable[i].substr(8, 2)) && stoi(daysTable[i + 1].substr(8, 2)) + 30 - stoi(daysTable[i].substr(8, 2)) >= 7) {
+    //         j++;
+    //         if (j == testPeriodLength + 1 || i == testStartEndRow - 1) {
+    //             endRow.push_back(i);
+    //             if (i == testStartEndRow - 1) {
+    //                 break;
+    //             }
+    //             i--;
+    //             j = 0;
+    //         }
+    //     }
+    for (int i = 0; i < startRow.size(); i++) {
+        for (int j = startRow[i], k = 0; k <= trainPeriodLength; j++) {
+            weekDayPre = cal_weekday(daysTable[j - 1]);
+            weekDayNow = cal_weekday(daysTable[j]);
+            if (weekDayNow <= weekDayPre ||
+                stoi(daysTable[j].substr(8, 2)) - stoi(daysTable[j - 1].substr(8, 2)) >= 7 ||
+                stoi(daysTable[j].substr(8, 2)) < stoi(daysTable[j - 1].substr(8, 2)) && stoi(daysTable[j].substr(8, 2)) + 30 - stoi(daysTable[j - 1].substr(8, 2)) >= 7)
+                k++;
+            if (k == trainPeriodLength + 1 /* || j == testStartEndRow - 1 */) {
+                // if (j == testStartEndRow - 1) {
+                //     endRow.push_back(j);
+                //     i = startRow.size();
+                //     break;
+                // }
+                // else {
+                endRow.push_back(j - 1);
+                // }
+            }
+        }
+    }
+    for (int i = 0; i < endRow.size(); i++) {
+        intervalTable.push_back(startRow[i]);
+        intervalTable.push_back(endRow[i]);
+    }
+}
+
 void find_train_start_row(int tableSize, string* daysTable, int trainPeriodLength, int& trainStartRow, int& testStartRow) {
     for (int i = 0; i < tableSize; i++) {  //找出測試期開始row
         if (daysTable[i].substr(0, 4) == _test_start_y) {
@@ -535,12 +660,18 @@ vector<string> find_train_type(string inputString, char& delimiter) {
     string segment;
     vector<string> seglist;
     stringstream toCut(inputString);
-    if (inputString.find('M') != string::npos) {
-        delimiter = 'M';
+    for (int i = 0; i < inputString.length(); i++) {
+        if (isalpha(inputString[i])) {
+            delimiter = inputString[i];
+            break;
+        }
     }
-    else {
-        delimiter = 'D';
-    }
+    // if (inputString.find('M') != string::npos) {
+    //     delimiter = 'M';
+    // }
+    // else {
+    //     delimiter = 'D';
+    // }
     while (getline(toCut, segment, delimiter)) {
         seglist.push_back(segment);
     }
@@ -570,6 +701,9 @@ void find_interval(int table_size, int slide, string* daysTable, vector<int>& in
         }
         else if (delimiter == 'D') {
             find_D_window(table_size, _sliding_windows[slide], daysTable, interval_table);
+        }
+        else if (delimiter == 'W') {
+            find_W_window(table_size, _sliding_windows[slide], daysTable, interval_table);
         }
     }
     for (int i = 0; i < interval_table.size(); i += 2) {
@@ -623,7 +757,12 @@ void cal_train_RoR(int interval_index, int& earlestGen, int gen, vector<int> int
     update_global();
 }
 
-void cal(int interval_index, int& earlestGen, vector<int> interval_table, double** RSITable, double* priceTable) {
+void cal(int interval_index, int& earlestGen, vector<int> interval_table, double** RSITable, double* priceTable /* , ofstream& deout */, int exp) {
+    // int debugExp = 0;
+    // int debugInterval = 6;
+    // if (interval_index == debugInterval && exp == debugExp) {
+    //     deout << "exp: " << exp << "==========================" << endl;
+    // }
     ini_global();
     ini_beta_matrix();
     for (int gen = 0; gen < _generation; gen++) {
@@ -631,6 +770,41 @@ void cal(int interval_index, int& earlestGen, vector<int> interval_table, double
         measure();
         bi_to_dec();
         cal_train_RoR(interval_index, earlestGen, gen, interval_table, RSITable, priceTable);
+        // if (interval_index == debugInterval && exp > debugExp) {
+        //     exit(0);
+        // }
+        // if (interval_index == debugInterval && exp == debugExp) {
+        //     deout << "gen:" << gen << "++++++++++++++++++++" << endl;
+        //     for (int partical_num = 0; partical_num < PARTICAL_AMOUNT; partical_num++) {
+        //         deout << "P:" << partical_num << endl;
+        //         for (int i = 0; i < PERIOD_BIT; i++) {
+        //             deout << partical[partical_num].period_bi[i] << ",";
+        //         }
+        //         deout << "xxxx,";
+        //         for (int i = 0; i < OVERSOLD_BIT; i++) {
+        //             deout << partical[partical_num].buying_signal_bi[i] << ",";
+        //         }
+        //         deout << "xxxx,";
+        //         for (int i = 0; i < OVERBOUGHT_BIT; i++) {
+        //             deout << partical[partical_num].selling_signal_bi[i] << ",";
+        //         }
+        //         deout << "xxxx,";
+        //         deout << partical[partical_num].period_dec << "," << partical[partical_num].buying_signal_dec << "," << partical[partical_num].selling_signal_dec << "," << partical[partical_num].RoR << "%" << endl;
+        //     }
+        //     deout << "Gbest" << endl;
+        //     deout << Gbest.period_dec << "," << Gbest.buying_signal_dec << "," << Gbest.selling_signal_dec << "," << Gbest.RoR << "%" << endl;
+        //     for (int i = 0; i < PERIOD_BIT; i++) {
+        //         deout << prob_matrix.period[i] << ",";
+        //     }
+        //     for (int i = 0; i < OVERSOLD_BIT; i++) {
+        //         deout << prob_matrix.buying_signal[i] << ",";
+        //     }
+        //     for (int i = 0; i < OVERBOUGHT_BIT; i++) {
+        //         deout << prob_matrix.selling_signal[i] << ",";
+        //     }
+        //     deout << endl;
+        //     deout << endl;
+        // }
     }
     // cout << the_best.RoR << "%" << endl;
 }
@@ -757,6 +931,9 @@ void start_train() {
     vector<string> company = get_file(_output_path);
     int companyNum = (int)company.size();
     for (int company_index = 0; company_index < companyNum; company_index++) {
+        // if (stock_file[company_index] != "V.csv") {
+        //     continue;
+        // }
         cout << company[company_index] << endl;
         cout << RSI_file[company_index] << endl;
         cout << stock_file[company_index] << endl;
@@ -767,6 +944,8 @@ void start_train() {
         double* priceTable = store_price_to_arr(_price_path + "/" + stock_file[company_index], totalDays, daysTable);  //記錄開始日期的股價到結束日期的股價
         double** RSITable = store_RSI_table_to_arr(RSITable_path + "/" + RSI_file[company_index], totalDays);  //記錄一間公司開始日期到結束日期1~256的RSI
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
+        // ofstream deout;
+        // deout.open("debug.csv");
         for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {
             srand(343);
             vector<int> interval_table;  //記錄視窗區間
@@ -780,8 +959,7 @@ void start_train() {
                 cout << "===" + daysTable[interval_table[interval_index]] + "~" + daysTable[interval_table[interval_index + 1]] + "===" << endl;
                 ini_the_best();
                 for (int exp = 0; exp < _exp_times; exp++) {
-                    // cout << "exp: " << exp + 1 << "   ";
-                    cal(interval_index, earlestGen, interval_table, RSITable, priceTable);
+                    cal(interval_index, earlestGen, interval_table, RSITable, priceTable /* , deout */, exp);
                     if (the_best.RoR < Gbest.RoR) {
                         earlestExp = exp;
                         theBestGen = earlestGen;
@@ -800,6 +978,7 @@ void start_train() {
             delete[] RSITable[i];
         }
         delete[] RSITable;
+        // deout.close();
     }
 }
 
@@ -1033,11 +1212,89 @@ vector<string> find_test_interval(char interval, string testPeriod, int totalDay
     return testInterval;
 }
 
+vector<string> find_W_test(char delimiter, int testLength, int totalDays, string* date) {
+    vector<string> testInterval;
+    int testStartRow = -1;
+    int testEndRow = -1;
+    for (int i = 0; i < totalDays; i++) {
+        if (date[i].substr(0, 4) == _test_start_y) {
+            testStartRow = i;
+            break;
+        }
+    }
+    for (int i = 0; i < totalDays; i++) {
+        if (date[i].substr(0, 4) == _test_end_y) {
+            testEndRow = i - 1;
+            break;
+        }
+    }
+    vector<string> startRow;
+    vector<string> endRow;
+    switch (delimiter) {
+        case 'W': {
+            int weekDayPre{-1};
+            int weekDayNow{-1};
+            startRow.push_back(date[testStartRow]);
+            for (int i = testStartRow, j = 0; i < testEndRow; i++) {
+                weekDayPre = cal_weekday(date[i - 1]);
+                weekDayNow = cal_weekday(date[i]);
+                if (weekDayNow <= weekDayPre ||
+                    stoi(date[i].substr(8, 2)) - stoi(date[i - 1].substr(8, 2)) >= 7 ||
+                    stoi(date[i].substr(8, 2)) < stoi(date[i - 1].substr(8, 2)) && stoi(date[i].substr(8, 2)) + 30 - stoi(date[i - 1].substr(8, 2)) >= 7) {
+                    j++;
+                    if (j == testLength + 1) {
+                        startRow.push_back(date[i]);
+                        i--;
+                        j = 0;
+                    }
+                }
+            }
+
+            for (int i = testStartRow, j = 0; i <= testEndRow + 1; i++) {
+                weekDayPre = cal_weekday(date[i - 1]);
+                weekDayNow = cal_weekday(date[i]);
+                if (weekDayNow <= weekDayPre ||
+                    stoi(date[i].substr(8, 2)) - stoi(date[i - 1].substr(8, 2)) >= 7 ||
+                    stoi(date[i].substr(8, 2)) < stoi(date[i - 1].substr(8, 2)) && stoi(date[i].substr(8, 2)) + 30 - stoi(date[i - 1].substr(8, 2)) >= 7) {
+                    j++;
+                    if (j == testLength + 1 || i == testEndRow + 1) {
+                        endRow.push_back(date[i - 1]);
+                        if (i == testEndRow + 1) {
+                            break;
+                        }
+                        i--;
+                        j = 0;
+                    }
+                }
+            }
+            // cout << startRow.size() << endl;
+            // cout << endRow.size() << endl;
+            // for (int i = 0; i < startRow.size(); i++) {
+            //     cout << startRow[i] + "~" + endRow[i] << endl;
+            // }
+            // cout << "=====================" << endl;
+            // for (int i = 0; i < endRow.size(); i++) {
+            //     cout << endRow[i] << endl;
+            // }
+            break;
+        }
+    }
+    cout << "========" << endl;
+    for (int i = 0; i < startRow.size(); i++) {
+        testInterval.push_back(startRow[i]);
+        testInterval.push_back(endRow[i]);
+    }
+    return testInterval;
+}
+
 void start_test() {
     vector<string> company = get_file(_output_path);  //get companies name
     vector<string> RSI_table = get_file(RSITable_path);  //get RSI table
     int companyNum = (int)company.size();
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        // if (company[whichCompany] != "V") {
+        //     continue;
+        // }
         cout << "===========================test " + company[whichCompany] << endl;
         int totalDays = 0;
         string* daysTable = store_days_to_arr(RSITable_path + "/" + RSI_table[whichCompany], totalDays);  //記錄開始日期到結束日期
@@ -1049,7 +1306,12 @@ void start_test() {
                 cout << _sliding_windows[windowUse] << endl;
                 vector<string> strategy = get_file(_output_path + "/" + company[whichCompany] + "/train/" + _sliding_windows[windowUse]);  //get strategy files
                 vector<string> testInterval;
-                if (!isalpha(_sliding_windows[windowUse][0])) {  //天數訓練
+                char delimiter;
+                vector<string> trainAndTest = find_train_type(_slidingWindowsEX[windowUse], delimiter);
+                if (delimiter == 'W') {
+                    testInterval = find_W_test(delimiter, stoi(trainAndTest[1]), totalDays, daysTable);
+                }
+                else if (!isalpha(_sliding_windows[windowUse][0])) {  //天數訓練
                     testInterval = find_test_interval('0', find_train_type(_sliding_windows[windowUse], 'D', '!').back(), totalDays, daysTable);
                 }
                 else if (_sliding_windows[windowUse].length() == 2) {  //年對年
@@ -1122,6 +1384,9 @@ void cal_test_IRR() {
     int companyNum = (int)company.size();
     vector<rank> GNQTSRank, traditionRank;
     for (int whichCompany = 0; whichCompany < companyNum; whichCompany++) {
+        // if (company[whichCompany] == "V") {
+        //     continue;
+        // }
         vector<windowIRR> IRRList;
         cout << "=====" + company[whichCompany] + "=====" << endl;
         IRROut << "=====" + company[whichCompany] + "=====,GNQTS,Tradition" << endl;
@@ -1242,7 +1507,7 @@ void cal_test_IRR() {
             return a.GNQTSIRR > b.GNQTSIRR;
         });
         for (int i = 0; i < IRRList.size(); i++) {
-            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR << "," << IRRList[i].traditionIRR << endl;
+            IRROut << fixed << setprecision(10) << IRRList[i].window + "," << IRRList[i].GNQTSIRR * 100 << "," << IRRList[i].traditionIRR * 100 << endl;
         }
     }
     vector<string> windowSort(_sliding_windows + 1, _sliding_windows + (sizeof(_sliding_windows) / sizeof(_sliding_windows[0])));
@@ -1371,6 +1636,7 @@ void cal_specify_strategy(string startDate, string endDate, int period, int buyS
 void create_folder() {
     create_directory(_output_path);
     create_directory("IRR_split");
+    create_directory(RSITable_path);
     vector<path> getCompany;
     copy(directory_iterator(_price_path), directory_iterator(), back_inserter(getCompany));
     sort(getCompany.begin(), getCompany.end());
@@ -1407,8 +1673,25 @@ void remove_file() {
     sort(getCompany.begin(), getCompany.end());
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
-            remove_all(getCompany[i].string() + "/testBestHold");
-            // remove_all(getCompany[i].string() + "/test/10D10");
+            // remove_all(getCompany[i].string() + "/testBestHold");
+            // "4W4", "4W3", "4W2", "4W1", "3W3", "3W2", "3W1", "2W2", "2W1", "1W1"
+            // remove_all(getCompany[i].string() + "/testTradition/4W4");
+            // remove_all(getCompany[i].string() + "/testTradition/4W3");
+            // remove_all(getCompany[i].string() + "/testTradition/4W2");
+            // remove_all(getCompany[i].string() + "/testTradition/4W1");
+            // remove_all(getCompany[i].string() + "/testTradition/3W3");
+            // remove_all(getCompany[i].string() + "/testTradition/3W2");
+            // remove_all(getCompany[i].string() + "/testTradition/3W1");
+            // remove_all(getCompany[i].string() + "/testTradition/2W2");
+            // remove_all(getCompany[i].string() + "/testTradition/2W1");
+            // remove_all(getCompany[i].string() + "/testTradition/1W1");
+
+            remove_all(getCompany[i].string() + "/testTradition/2W3");
+            remove_all(getCompany[i].string() + "/testTradition/2W4");
+            // remove_all(getCompany[i].string() + "/train/2W3");
+            // remove_all(getCompany[i].string() + "/train/2W4");
+            // remove_all(getCompany[i].string() + "/test/2W3");
+            // remove_all(getCompany[i].string() + "/test/2W4");
         }
     }
 }
@@ -1476,25 +1759,30 @@ double cal_train_tradition_RoR(string* daysTable, double* priceTable, double** R
     return (remain - TOTAL_CP_LV) / TOTAL_CP_LV;
 }
 
-void test_tradition(string* daysTable, double* priceTable, double** RSITable, int totalDays, string company, vector<vector<double> > strategy, string windowUse) {
-    cout << "===========================test tradition " + windowUse << endl;
+void test_tradition(string* daysTable, double* priceTable, double** RSITable, int totalDays, string company, vector<vector<double> > strategy, string windowUseString, int windowIndex) {
+    cout << "===========================test tradition " + windowUseString << endl;
     vector<string> testInterval;
-    if (!isalpha(windowUse[0])) {  //天數訓練
-        testInterval = find_test_interval('0', find_train_type(windowUse, 'D', '!').back(), totalDays, daysTable);
+    char delimiter;
+    vector<string> trainAndTest = find_train_type(_slidingWindowsEX[windowIndex], delimiter);
+    if (delimiter == 'W') {
+        testInterval = find_W_test(delimiter, stoi(trainAndTest[1]), totalDays, daysTable);
     }
-    else if (windowUse.length() == 2) {  //年對年
-        testInterval = find_test_interval(find_train_type(windowUse, '2', '#').front()[0], "-1", totalDays, daysTable);
+    else if (!isalpha(windowUseString[0])) {  //天數訓練
+        testInterval = find_test_interval('0', find_train_type(windowUseString, 'D', '!').back(), totalDays, daysTable);
+    }
+    else if (windowUseString.length() == 2) {  //年對年
+        testInterval = find_test_interval(find_train_type(windowUseString, '2', '#').front()[0], "-1", totalDays, daysTable);
     }
     else {  //一般測試期區間
-        testInterval = find_test_interval(find_train_type(windowUse, '2', '!').back()[0], "-1", totalDays, daysTable);
+        testInterval = find_test_interval(find_train_type(windowUseString, '2', '!').back()[0], "-1", totalDays, daysTable);
     }
     // for (int i = 0; i < testInterval.size(); i += 2) {
     //     cout << testInterval[i] << "~" << testInterval[i + 1] << endl;
     // }
     ofstream holdPeriod;
-    holdPeriod.open(_output_path + "/" + company + "/testTraditionHoldPeriod/" + company + "_" + windowUse + ".csv");
+    holdPeriod.open(_output_path + "/" + company + "/testTraditionHoldPeriod/" + company + "_" + windowUseString + ".csv");
     holdPeriod << "Date,Price,Hold" << endl;
-    string RoROutputPath = _output_path + "/" + company + "/testTradition/" + windowUse;
+    string RoROutputPath = _output_path + "/" + company + "/testTradition/" + windowUseString;
     int strategyNum = (int)strategy.size();
     for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
         // cout << strategyPath << endl;
@@ -1514,6 +1802,9 @@ void train_tradition() {
     vector<string> allCompany = get_file(_output_path);
     int companyNum = (int)allCompany.size();
     for (int companyIndex = 0; companyIndex < companyNum; companyIndex++) {
+        // if (allCompany[companyIndex] != "V") {
+        //     continue;
+        // }
         cout << "===========================train_tradition " << allStockPrice[companyIndex] << endl;
         int totalDays = 0;
         string* daysTable = store_days_to_arr(RSITable_path + "/" + allRSITalble[companyIndex], totalDays);  //記錄開始日期到結束日期
@@ -1550,8 +1841,7 @@ void train_tradition() {
                 //         cout << recordTrainStrategy[i][j] << endl;
                 //     }
                 // }
-                test_tradition(daysTable, priceTable, RSITable, totalDays, allCompany[companyIndex], recordTrainStrategy, _sliding_windows[windowIndex]);
-                vector<int>().swap(intervalTable);
+                test_tradition(daysTable, priceTable, RSITable, totalDays, allCompany[companyIndex], recordTrainStrategy, _sliding_windows[windowIndex], windowIndex);
             }
         }
         delete[] daysTable;
@@ -1564,7 +1854,7 @@ void train_tradition() {
 }
 
 void make_RSI_table() {
-    string startDate = "2009-07";  //V要2009-03以後，不然會錯誤
+    string startDate = "2008-12";  //V要2009-03以後，不然會錯誤
     string endY = "2021";
     vector<path> companyPath;
     copy(directory_iterator("RSI"), directory_iterator(), back_inserter(companyPath));
@@ -1573,6 +1863,9 @@ void make_RSI_table() {
     copy(directory_iterator("price"), directory_iterator(), back_inserter(companyName));
     sort(companyName.begin(), companyName.end());
     for (int companyIndex = 0; companyIndex < companyPath.size(); companyIndex++) {
+        // if (companyName[companyIndex].stem().string() == "V") {
+        //     continue;
+        // }
         cout << companyName[companyIndex].stem() << endl;
         vector<path> RSIFilePath;
         copy(directory_iterator(companyPath[companyIndex]), directory_iterator(), back_inserter(RSIFilePath));

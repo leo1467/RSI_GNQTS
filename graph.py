@@ -143,7 +143,6 @@ def split_testIRR_draw():
             index.append(int(i))
             index.append(int(i+1))
     index.append(int(i))
-
     os.chdir('IRR_split')
     i = 0
     j = 0
@@ -169,7 +168,7 @@ def split_testIRR_draw():
             plt.bar(x, df.GNQTS, width, label='GNQTS', color=clrGNQTS)
             plt.bar(x+width, df.Tradition, width,
                     label='Tradition', color=clrsTrandition)
-            plt.xticks(x + width / 2, df.Window)
+            plt.xticks(x + width / 2, df.Window, rotation=45, fontsize=7)
 
             # ax = df.GNQTS.plot(kind='bar')
             # ax.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -181,17 +180,48 @@ def split_testIRR_draw():
             leg.legendHandles[0].set_color('steelblue')
             leg.legendHandles[1].set_color('darkorange')
 
+            lableClr1 = ['YYY2Y', 'YY2Y', 'YH2Y', 'Y2Y']
+            lableClr2 = ['YY2H', 'Y2H', 'YY2Q', 'Y2Q', 'YY2M', 'Y2M']
+            lableClr3 = ['H2H', 'H#', 'H2Q', 'Q2Q',
+                         'Q#', 'H2M', 'Q2M', 'M2M', 'M#']
+            lableclr4 = ['20D20', '20D15', '20D10', '20D5',
+                         '15D15', '15D10', '15D5', '10D10', '10D5', '5D5']
+            lableclr5 = ["4W4", "4W3", "4W2", "4W1",
+                         "3W3", "3W2", "3W1", "2W2", "2W1", "1W1"]
+            # lableClr6 = ["5D4", "5D3", "5D2", "4D3", "4D2", "3D2"]
+            transparent = 1
+            for i in ax.get_xticklabels():
+                txt = i.get_text()
+                for tmp in lableClr1:
+                    if txt == tmp:
+                        plt.setp(i, bbox=dict(boxstyle="round", facecolor='gold',
+                                              edgecolor='none', alpha=transparent))
+                for tmp in lableClr2:
+                    if txt == tmp:
+                        plt.setp(i, bbox=dict(boxstyle="round", facecolor='limegreen',
+                                              edgecolor='none', alpha=transparent))
+                for tmp in lableClr3:
+                    if txt == tmp:
+                        plt.setp(i, bbox=dict(boxstyle="round", facecolor='r',
+                                              edgecolor='none', alpha=transparent))
+                for tmp in lableclr4:
+                    if txt == tmp:
+                        plt.setp(i, bbox=dict(boxstyle="round", facecolor='grey',
+                                              edgecolor='none', alpha=transparent))
+                for tmp in lableclr5:
+                    if txt == tmp:
+                        plt.setp(i, bbox=dict(boxstyle="round", facecolor='darkgoldenrod',
+                                              edgecolor='none', alpha=transparent))
+                # for tmp in lableClr6:
+                #     if txt == tmp:
+                #         plt.setp(i, backgroundcolor='white', size=6)
+            # plt.setp(ax.get_xticklabels(), bbox=bbox)
+
             print(file.split('.')[0])
             plt.savefig(file.split('.')[0]+'.png',
                         dpi=fig.dpi, bbox_inches='tight')
             plt.cla()
 
 
-def main():
+if __name__ == '__main__':
     split_testIRR_draw()
-
-    # split_hold_period()
-    # draw_hold_period()
-
-
-main()
