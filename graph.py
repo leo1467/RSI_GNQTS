@@ -1,10 +1,8 @@
-from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import glob
 import os
-import csv
 import gc
 import matplotlib.ticker as mtick
 
@@ -14,7 +12,6 @@ all_company.sort()
 oowd = os.getcwd()
 file_extension = '.csv'
 splitTargetFolder = ['/testBestHold']
-fig = plt.figure(figsize=[16, 4.5], dpi=300)
 
 
 def split_hold_period():
@@ -65,6 +62,7 @@ def split_hold_period():
 
 
 def draw_hold_period():
+    fig = plt.figure(figsize=[16, 4.5], dpi=300)
     os.chdir(oowd)
     now = 0
     month = ['01', '02', '03', '04', '05', '06',
@@ -120,7 +118,7 @@ def draw_hold_period():
         plt.close(fig)
 
 
-def split_testIRR_draw():
+def split_testIRR_draw(split):
     os.chdir(owd)
     # index = []
     # i = 0
@@ -148,19 +146,37 @@ def split_testIRR_draw():
     j = 0
     for i in range(len(index)):
         if i % 2 == 0 and all_company[j] != '.DS_Store':
-            f = open(all_company[j]+'_IRR.csv', 'w+')
-            f.write('Window,GNQTS,Tradition\n')
-            f.writelines(csvfile[index[i]:index[i+1]])
-            f.close()
-            j += 1
-    all_filename = os.listdir()
+            if split == 0:  # 不分割csv
+                f = open(all_company[j]+'_IRR.csv', 'w+')
+                f.write('Window,GNQTS,Tradition\n')
+                f.writelines(csvfile[index[i]:index[i+1]])
+                f.close()
+                j += 1
+            elif split == 1:  # 分割成兩個csv
+                f1 = open(all_company[j]+'_IRR_1.csv', 'w+')
+                f1.write('Window,GNQTS,Tradition\n')
+                f1.writelines(csvfile[index[i]:int(index[i] +
+                                      (index[i+1] - index[i]) / 2)])
+                f1.close()
+                f2 = open(all_company[j]+'_IRR_2.csv', 'w+')
+                f2.write('Window,GNQTS,Tradition\n')
+                f2.writelines(
+                    csvfile[int(index[i] + (index[i+1] - index[i]) / 2):index[i+1]])
+                f2.close()
+                j += 1
 
-    for file in all_filename:
+    all_filename = os.listdir()
+    if split == 0:
+        fig = plt.figure(figsize=[16, 4.5], dpi=300)  # 不分割圖片時的圖片size
+    elif split == 1:
+        fig = plt.figure(figsize=[16, 2.8], dpi=300)  # 分割圖片時的圖片size
+
+    for index, file in enumerate(all_filename):
         if file.split('.')[1] == 'csv':
             df = pd.read_csv(file)
             width = 0.3
             x = np.arange(len(df.Window))
-            window = np.array(list(df.Window))
+            # window = np.array(list(df.Window))
 
             clrGNQTS = ['r' if i == 'B&H' else 'steelblue' for i in df.Window]
             clrsTrandition = ['w' if i ==
@@ -168,27 +184,31 @@ def split_testIRR_draw():
             plt.bar(x, df.GNQTS, width, label='GNQTS', color=clrGNQTS)
             plt.bar(x+width, df.Tradition, width,
                     label='Tradition', color=clrsTrandition)
-            plt.xticks(x + width / 2, df.Window, rotation=45, fontsize=7)
+            plt.xticks(x + width / 2, df.Window, rotation=45, fontsize=10)
 
-            # ax = df.GNQTS.plot(kind='bar')
-            # ax.yaxis.set_major_formatter(mtick.PercentFormatter())
             plt.grid(axis='y')
             plt.title(file.split('_')[0])
             plt.legend()
             ax = plt.gca()
+            ax.yaxis.set_major_formatter(mtick.PercentFormatter())  # 把座標變成%
+            # 之後有空找兩張圖共用一個y axis
+            # https://www.kite.com/python/answers/how-to-get-the-y-axis-range-of-a-plot-in-matplotlib-in-python
+            # https://stackoverflow.com/questions/12608788/changing-the-tick-frequency-on-x-or-y-axis-in-matplotlib
             leg = ax.get_legend()
             leg.legendHandles[0].set_color('steelblue')
             leg.legendHandles[1].set_color('darkorange')
 
-            lableClr1 = ['YYY2Y', 'YY2Y', 'YH2Y', 'Y2Y']
-            lableClr2 = ['YY2H', 'Y2H', 'YY2Q', 'Y2Q', 'YY2M', 'Y2M']
+            lableClr1 = ["YYY2YYY", "YYY2YY", 'YYY2Y', "YYY2YH",
+                         "YY2YY", "YY2YH", 'YY2Y', "YH2YH", 'YH2Y', 'Y2Y']
+            lableClr2 = ["YYY2H", "YYY2Q", "YYY2M", 'YY2H', 'YY2Q',
+                         'YY2M', "YH2H", "YH2Q", "YH2M", 'Y2H', 'Y2Q', 'Y2M']
             lableClr3 = ['H2H', 'H#', 'H2Q', 'Q2Q',
                          'Q#', 'H2M', 'Q2M', 'M2M', 'M#']
             lableclr4 = ['20D20', '20D15', '20D10', '20D5',
                          '15D15', '15D10', '15D5', '10D10', '10D5', '5D5']
             lableclr5 = ["4W4", "4W3", "4W2", "4W1",
                          "3W3", "3W2", "3W1", "2W2", "2W1", "1W1"]
-            # lableClr6 = ["5D4", "5D3", "5D2", "4D3", "4D2", "3D2"]
+            # lableClr6 = ["5D4", "5D3", "5D2", "4D3", "4D2", "3D2", "2D2"]
             transparent = 1
             for i in ax.get_xticklabels():
                 txt = i.get_text()
@@ -221,7 +241,12 @@ def split_testIRR_draw():
             plt.savefig(file.split('.')[0]+'.png',
                         dpi=fig.dpi, bbox_inches='tight')
             plt.cla()
+            # print(index)
+            # if index == 2:
+            #     exit(0)
 
 
 if __name__ == '__main__':
-    split_testIRR_draw()
+    split_testIRR_draw(1)
+#     # split_hold_period()
+#     # draw_hold_period()
