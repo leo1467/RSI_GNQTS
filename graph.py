@@ -194,6 +194,7 @@ def split_testIRR_draw(split):
             # 之後有空找兩張圖共用一個y axis
             # https://www.kite.com/python/answers/how-to-get-the-y-axis-range-of-a-plot-in-matplotlib-in-python
             # https://stackoverflow.com/questions/12608788/changing-the-tick-frequency-on-x-or-y-axis-in-matplotlib
+
             leg = ax.get_legend()
             leg.legendHandles[0].set_color('steelblue')
             leg.legendHandles[1].set_color('darkorange')
