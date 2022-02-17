@@ -30,7 +30,7 @@ using namespace filesystem;
 #define OVERSOLD_BIT 7
 #define OVERBOUGHT_BIT 7
 
-int mode = 0;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
+int mode = 6;  //0:train, 1:train_IRR, 2:test, 3:train_tradition, 4:cal_test_IRR, 5: tradition RSI, 6: fin_best_hold, 7:specify, 8:B&H, 9: del files, 10:make_RSI_table
 
 double _delta = 0.003;
 int _exp_times = 50;
@@ -1019,6 +1019,10 @@ void start_train() {
         // ofstream deout;
         // deout.open("debug.csv");
         for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {
+            char delimiter;
+            if (company[company_index] == "V" && find_train_type(_slidingWindowsEX[windowIndex], delimiter)[0] == "36") {
+                continue;
+            }
             srand(343);
             vector<int> interval_table;  //記錄視窗區間
             find_interval(totalDays, windowIndex, daysTable, interval_table);
@@ -1129,10 +1133,10 @@ void cal_test_RoR(string* daysTable, double* priceTable, double** RSITable, stri
             stockHold = remain / priceTable[i];
             remain -= (double)stockHold * priceTable[i];
             tradeRecord.push_back("buy," + daysTable[i] + "," + to_string(priceTable[i]) + "," + to_string(RSITable[i][period]) + "," + to_string(stockHold) + "," + to_string(remain) + "," + to_string(remain + priceTable[i] * stockHold));
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << "," << priceTable[i] << endl;
         }
         else if (period != 0 && ((RSITable[i][period] >= sellSignal && stockHold != 0) || (stockHold != 0 && i == endingRow))) {  //賣出訊號出現且有持股
-            holdPeriod << priceTable[i] << endl;
+            holdPeriod << priceTable[i] << ",," << priceTable[i] << endl;
             sellNum++;
             remain += (double)stockHold * priceTable[i];
             stockHold = 0;
@@ -1320,9 +1324,9 @@ vector<string> find_test(int totalDays, string* daysTable, int windowUse) {
         testInterval = find_D_test(stoi(trainAndTest[1]), totalDays, daysTable);
     }
     cout << testInterval.size() / 2 << endl;
-    for (int i = 0; i < testInterval.size(); i += 2) {
-        cout << testInterval[i] + "~" + testInterval[i + 1] << endl;
-    }
+    // for (int i = 0; i < testInterval.size(); i += 2) {
+    //     cout << testInterval[i] + "~" + testInterval[i + 1] << endl;
+    // }
     cout << "======" << endl;
     return testInterval;
 }
@@ -1350,7 +1354,7 @@ void start_test() {
                 // continue;
                 ofstream holdPeriod;
                 holdPeriod.open(_output_path + "/" + company[whichCompany] + "/testHoldPeriod/" + company[whichCompany] + "_" + _sliding_windows[windowUse] + ".csv");
-                holdPeriod << "Date,Price,Hold" << endl;
+                holdPeriod << "Date,Price,Hold,buy,sell" << endl;
                 string outputPath = _output_path + "/" + company[whichCompany] + "/test/" + _sliding_windows[windowUse];
                 int strategyNum = (int)strategy.size();
                 for (int strategyUse = 0; strategyUse < strategyNum; strategyUse++) {
@@ -1702,7 +1706,7 @@ void remove_file() {
     sort(getCompany.begin(), getCompany.end());
     for (int i = 0; i < getCompany.size(); i++) {
         if (is_directory(getCompany[i])) {
-            // remove_all(getCompany[i].string() + "/test/3D24W4");
+            // remove_all(getCompany[i].string() + "/testBestHold");
             // remove_all(getCompany[i].string() + "/train/3D24W4");
         }
     }
@@ -1809,6 +1813,10 @@ void train_tradition() {
         int windowNum = sizeof(_sliding_windows) / sizeof(_sliding_windows[0]);
         for (int windowIndex = 0; windowIndex < windowNum; windowIndex++) {  //不要A2A
             if (_sliding_windows[windowIndex] != "A2A") {
+                char delimiter;
+                if (allCompany[companyIndex] == "V" && find_train_type(_slidingWindowsEX[windowIndex], delimiter)[0] == "36") {
+                    continue;
+                }
                 vector<int> intervalTable;  //記錄視窗區間
                 find_interval(totalDays, windowIndex, daysTable, intervalTable);
                 int intervalNum = (int)intervalTable.size();

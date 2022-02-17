@@ -247,7 +247,61 @@ def split_testIRR_draw(split):
             #     exit(0)
 
 
+def draw_hold():
+    fig = plt.figure(figsize=[16, 4.5], dpi=300)
+    for company in all_company:
+        os.chdir(company+'/testBestHold')
+        all_filename = [i for i in glob.glob(f"*{file_extension}")]
+        print(all_filename)
+        for file in all_filename:
+            df = pd.read_csv(file)
+            
+            yearIndexes = []
+            year = 0
+            for i, date in enumerate(df['Date']):
+                nowYear = int(date.split('-')[0])
+                if year != nowYear:
+                    yearIndexes.append(i)
+                    year = nowYear
+            yearIndexes.append(df.index[-1])
+            
+            for yearIndex in range(len(yearIndexes)-1):
+                newDf = df.iloc[yearIndexes[yearIndex]:yearIndexes[yearIndex+1]]
+                newDf.reset_index(inplace = True, drop = True)
+                
+                ax = plt.gca()
+                ax.plot(newDf['Date'],newDf['Price'],label='Price',color='g')
+                ax.plot(newDf['Date'],newDf['Hold'],label='Hold',color='r')
+                ax.scatter(newDf['Date'],newDf['buy'],c='darkorange', s=8, zorder=10,label='buy')
+                ax.scatter(newDf['Date'],newDf['sell'],c='purple', s=8, zorder=10,label='sell')
+                
+                # buy = [i for i in newDf.index if not np.isnan(newDf.at[i,'buy'])]
+                # sell = [i for i in newDf.index if not np.isnan(newDf.at[i,'sell'])]
+                # ax.vlines(buy, color='darkorange', linestyle='-',alpha=0.5,label='buy',ymin=0,ymax=max(newDf['Price']))
+                # ax.vlines(sell, color='purple', linestyle='-',alpha=0.5,label='sell',ymin=0,ymax=max(newDf['Price']))
+                mIndex = []
+                month = 0
+                for i, date in enumerate(newDf['Date']):
+                    nowMonth = int(date.split('-')[1])
+                    if month != nowMonth:
+                        mIndex.append(i)
+                        month = nowMonth
+                mIndex.append(newDf.index[-1])
+                # ax.set_xticks(mIndex)
+                plt.xticks(mIndex,fontsize=9)
+                plt.yticks(fontsize=9)
+                ax.legend()
+                ax.grid()
+                ax.set_xlabel('Date', fontsize=12, c='black')
+                ax.set_ylabel('Price', fontsize=12, c='black')
+                title = file.replace('.csv','_') + newDf.at[0,'Date'].split('-')[0] + '_Hold'
+                print(title)
+                ax.set_title(title)
+                plt.savefig(title +'.png',dpi=fig.dpi, bbox_inches='tight')
+                plt.clf()
+        os.chdir(oowd)
+        
+
 if __name__ == '__main__':
-    split_testIRR_draw(1)
-#     # split_hold_period()
-#     # draw_hold_period()
+    draw_hold()
+    # split_testIRR_draw(1)
